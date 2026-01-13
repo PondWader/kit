@@ -1,34 +1,54 @@
 package values
 
-import "strings"
+import (
+	"strings"
+)
 
 type String string
 
-func (s String) Trim() Value {
+func (s String) TrimWhitespace() Value {
 	return Of(strings.TrimSpace(string(s)))
 }
 
-func (s String) CutPrefixBefore(sep string) Value {
-	_, str, _ := strings.Cut(string(s), sep)
-	return Of(str)
+func (s String) CutPrefixBefore(sep Value) (Value, *Error) {
+	sepStr, ok := sep.ToString()
+	if !ok {
+		return Nil, FmtTypeError("cut_prefix_before", KindString)
+	}
+	_, str, _ := strings.Cut(string(s), sepStr.String())
+	return Of(str), nil
 }
 
-func (s String) CutSuffixAfter(sep string) Value {
-	idx := strings.LastIndex(string(s), sep)
-	if idx == -1 {
-		return Of(s)
+func (s String) CutSuffixAfter(sep Value) (Value, *Error) {
+	sepStr, ok := sep.ToString()
+	if !ok {
+		return Nil, FmtTypeError("cut_suffix_after", KindString)
 	}
-	return Of(s[:idx])
+	idx := strings.LastIndex(string(s), sepStr.String())
+	if idx == -1 {
+		return Of(s), nil
+	}
+	return Of(s[:idx]), nil
+}
+
+func (s String) Split(sep Value) (Value, *Error) {
+	sepStr, ok := sep.ToString()
+	if !ok {
+		return Nil, FmtTypeError("split", KindString)
+	}
+	return Of(strings.Split(string(s), sepStr.String())), nil
 }
 
 func (s String) Get(key string) Value {
 	switch key {
-	case "trim":
-		return Of(s.Trim)
+	case "trim_whitespace":
+		return Of(s.TrimWhitespace)
 	case "cut_prefix_before":
 		return Of(s.CutPrefixBefore)
 	case "cut_suffix_after":
 		return Of(s.CutSuffixAfter)
+	case "split":
+		return Of(s.Split)
 	default:
 		return Nil
 	}
@@ -36,4 +56,8 @@ func (s String) Get(key string) Value {
 
 func (s String) Val() Value {
 	return Value{s}
+}
+
+func (s String) String() string {
+	return string(s)
 }

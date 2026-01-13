@@ -158,7 +158,7 @@ var textToSymbolToken = map[string]TokenKind{
 	" ":    TokenKindWhitespace,
 	"\r":   TokenKindWhitespace,
 	"\t":   TokenKindWhitespace,
-	"\n":   TokenKindNewline,
+	"\n":   TokenKindNewLine,
 }
 
 // getOperatorToken parses single and multi-character operators

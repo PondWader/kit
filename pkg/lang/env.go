@@ -1,6 +1,7 @@
 package lang
 
 import (
+	"github.com/PondWader/kit/pkg/lang/std"
 	"github.com/PondWader/kit/pkg/lang/values"
 )
 
@@ -18,6 +19,10 @@ func NewEnv() *Environment {
 		Vars:    make(map[string]values.Value),
 		Exec:    &ExecutionControl{},
 	}
+}
+
+func (e *Environment) LoadStd() {
+	e.SetScoped("fetch", std.Fetch)
 }
 
 func (e *Environment) Export(name string, value values.Value) {

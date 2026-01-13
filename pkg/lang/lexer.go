@@ -234,9 +234,10 @@ func (l *Lexer) Unread(token Token) {
 		return
 	}
 	l.cursor -= len(token.Literal)
-	if token.Kind == TokenString {
+	switch token.Kind {
+	case TokenString:
 		l.cursor -= 2 // Account for quotation marks on either side
-	} else if token.Kind == TokenNewLine {
+	case TokenNewLine:
 		l.currentLine--
 	}
 }

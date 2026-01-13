@@ -24,6 +24,10 @@ func Of(v any) Value {
 		rv := reflect.ValueOf(v)
 		if rv.Kind() == reflect.Func {
 			return Value{Obj: Function{f: rv}}
+		} else if rv.Kind() == reflect.Slice {
+			return Value{Obj: ListOf(v)}
+		} else if rv.Kind() == reflect.Struct {
+			return Value{Obj: ObjectFromStruct(v)}
 		}
 		panic(reflect.TypeOf(v).String() + " is not a valid kitlang type")
 	}

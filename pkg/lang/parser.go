@@ -14,12 +14,13 @@ import (
 )
 
 var (
-	ErrImportNotAtTopLevel          = errors.New("all import statements must be declared at the top level of the module")
-	ErrUnexpectedToken              = errors.New("unexpected token encountered")
-	ErrUnterminatedString           = errors.New("unterminated string literal")
-	ErrExpectedDeclarationStatement = errors.New("expected a declaration statement")
-	ErrExportMustHaveDeclaration    = errors.New("an export statement must be followed by a declaration")
-	ErrAssignmentNotAllowed         = errors.New("assignment not allowed")
+	ErrExportNotAtTopLevel       = errors.New("all export statements must be declared at the top level of the module")
+	ErrUnexpectedToken           = errors.New("unexpected token encountered")
+	ErrUnterminatedString        = errors.New("unterminated string literal")
+	ErrExportMustHaveDeclaration = errors.New("an export statement must be followed by a declaration")
+	ErrAssignmentNotAllowed      = errors.New("assignment not allowed")
+	ErrCallAtTopLevel            = errors.New("functions cannot be called at the top level of the program")
+	ErrMissingLambdaArg          = errors.New("missing lamdba arg name")
 )
 
 func fmtUnexpectedToken(expected []tokens.TokenKind, got tokens.Token) error {
@@ -32,13 +33,15 @@ func fmtUnexpectedToken(expected []tokens.TokenKind, got tokens.Token) error {
 func Parse(r io.Reader) ([]Node, error) {
 	br := bufio.NewReader(r)
 	l := tokens.NewLexer(br)
-	p := parser{l, br}
+	p := parser{0, l, br, -1}
 	return p.parseProgram()
 }
 
 type parser struct {
-	l *tokens.Lexer
-	r *bufio.Reader
+	blockDepth   int
+	l            *tokens.Lexer
+	r            *bufio.Reader
+	newLineState int
 }
 
 func (p *parser) expectToken(kind ...tokens.TokenKind) (tokens.Token, error) {
@@ -51,7 +54,7 @@ func (p *parser) expectToken(kind ...tokens.TokenKind) (tokens.Token, error) {
 	}
 
 	// Ignore white space and new lines since we don't want to be sensitive to it
-	if token.Kind == tokens.TokenKindNewline || token.Kind == tokens.TokenKindWhitespace {
+	if token.Kind == tokens.TokenKindNewLine || token.Kind == tokens.TokenKindWhitespace {
 		return p.expectToken(kind...)
 	}
 
@@ -88,7 +91,7 @@ func (p *parser) nextStatementToken() (tokens.Token, error) {
 	if err != nil {
 		return token, err
 	}
-	if token.Kind == tokens.TokenKindNewline || token.Kind == tokens.TokenKindSemicolon || token.Kind == tokens.TokenKindWhitespace {
+	if token.Kind == tokens.TokenKindNewLine || token.Kind == tokens.TokenKindSemicolon || token.Kind == tokens.TokenKindWhitespace {
 		return p.nextStatementToken()
 	}
 	if token.Kind == tokens.TokenKindEOF {
@@ -109,12 +112,18 @@ func (p *parser) parseStatementFromToken(tok tokens.Token) (n Node, err error) {
 		return p.parseExport()
 	case tokens.TokenKindFunction:
 		return p.parseFunction()
+	case tokens.TokenKindReturn:
+		return p.parseReturn()
 	default:
 		return p.parseExpressionFromToken(tok)
 	}
 }
 
 func (p *parser) parseExport() (n NodeExport, err error) {
+	if p.blockDepth != 0 {
+		return n, ErrExportNotAtTopLevel
+	}
+
 	ident, err := p.expectToken(tokens.TokenKindIdentifier, tokens.TokenKindFunction)
 	if err != nil {
 		return n, err
@@ -129,6 +138,11 @@ func (p *parser) parseExport() (n NodeExport, err error) {
 	}
 	n.Decl = decl
 	return
+}
+
+func (p *parser) parseReturn() (n NodeReturn, err error) {
+	n.Val, err = p.parseExpression()
+	return n, err
 }
 
 func (p *parser) parseExpression() (Node, error) {
@@ -173,6 +187,10 @@ func (p *parser) parseOperation(node Node) (Node, error) {
 			node, err = p.parseAssignment(node)
 		case tokens.TokenKindDot:
 			node, err = p.parseKeyAccess(node)
+		case tokens.TokenKindLeftParen:
+			node, err = p.parseCallExpression(node)
+		case tokens.TokenKindArrow:
+			node, err = p.parseLambda(node)
 		default:
 			p.l.Unread(next)
 			return node, nil
@@ -182,6 +200,29 @@ func (p *parser) parseOperation(node Node) (Node, error) {
 			return nil, err
 		}
 	}
+}
+
+func (p *parser) parseCallExpression(fn Node) (n NodeCall, err error) {
+	if p.blockDepth == 0 {
+		return n, ErrCallAtTopLevel
+	}
+
+	n.Fn = fn
+
+	tok, err := p.next()
+	if err != nil {
+		return n, err
+	} else if tok.Kind != tokens.TokenKindRightParen {
+		n.Arg, err = p.parseExpressionFromToken(tok)
+		if err != nil {
+			return n, err
+		}
+		_, err := p.expectToken(tokens.TokenKindRightParen)
+		if err != nil {
+			return n, err
+		}
+	}
+	return
 }
 
 func (p *parser) parseAssignment(node Node) (Node, error) {
@@ -210,6 +251,16 @@ func (p *parser) parseKeyAccess(node Node) (n NodeKeyAccess, err error) {
 
 	n.Val = node
 	n.Key = next.Literal
+	return
+}
+
+func (p *parser) parseLambda(arg Node) (n NodeFunction, err error) {
+	ident, ok := arg.(NodeIdentifier)
+	if !ok {
+		return n, ErrMissingLambdaArg
+	}
+	n.ArgName = ident.Ident
+	n.Body, err = p.parseExpression()
 	return
 }
 
@@ -247,7 +298,10 @@ func (p *parser) parseFunction() (Node, error) {
 		b.IsFunctionBody = true
 		fn.Body = b
 	} else {
+		// Although it's not actually a block, we want to allow function calls
+		p.blockDepth++
 		b, err := p.parseExpression()
+		p.blockDepth--
 		if err != nil {
 			return nil, err
 		}
@@ -261,6 +315,11 @@ func (p *parser) parseFunction() (Node, error) {
 }
 
 func (p *parser) parseBlock() (NodeBlock, error) {
+	p.blockDepth++
+	defer func() {
+		p.blockDepth--
+	}()
+
 	b := NodeBlock{
 		Body: make([]Node, 0, 16),
 	}
@@ -280,7 +339,10 @@ func (p *parser) parseBlock() (NodeBlock, error) {
 		}
 		b.Body = append(b.Body, stmt)
 
-		next, err := p.expectToken(tokens.TokenKindRightBrace, tokens.TokenKindEOF, tokens.TokenKindNewline, tokens.TokenKindSemicolon)
+		if p.newLineState == p.l.State {
+			continue
+		}
+		next, err := p.expectToken(tokens.TokenKindRightBrace, tokens.TokenKindEOF, tokens.TokenKindNewLine, tokens.TokenKindSemicolon)
 		if err != nil {
 			return b, err
 		}
@@ -290,15 +352,18 @@ func (p *parser) parseBlock() (NodeBlock, error) {
 	}
 }
 
-// Next returns the next token from the lexer, skipping comments
+// Next returns the next token from the lexer, skipping comments and recording new lines
 func (p *parser) next() (tokens.Token, error) {
 	for {
+		inNewLine := p.newLineState == p.l.State
 		token, err := p.l.Next()
 		if err != nil {
 			return token, err
 		}
 		if token.Kind == tokens.TokenKindSingleLineComment || token.Kind == tokens.TokenKindMultiLineComment {
 			continue
+		} else if token.Kind == tokens.TokenKindNewLine || (token.Kind == tokens.TokenKindWhitespace && inNewLine) {
+			p.newLineState = p.l.State
 		}
 		return token, nil
 	}
@@ -310,7 +375,7 @@ func (p *parser) nextAfterWhiteSpace() (tokens.Token, error) {
 		if err != nil {
 			return token, err
 		}
-		if token.Kind != tokens.TokenKindWhitespace {
+		if token.Kind != tokens.TokenKindWhitespace && token.Kind != tokens.TokenKindNewLine {
 			return token, err
 		}
 	}

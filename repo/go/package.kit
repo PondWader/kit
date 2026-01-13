@@ -12,6 +12,6 @@ export fn versions() {
         .trim_whitespace()
         .split("\n")
         .map_to_set(l -> 
-            l.cut_prefix_before('-').cut_suffix_after('.')
+            l.cut_prefix_before("-").cut_suffix_after(".")
         )
 }

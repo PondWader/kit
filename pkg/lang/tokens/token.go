@@ -176,7 +176,7 @@ const (
 
 	// Special
 	TokenKindEOF
-	TokenKindNewline
+	TokenKindNewLine
 	TokenKindWhitespace
 	TokenKindSingleLineComment
 	TokenKindMultiLineComment
@@ -484,7 +484,7 @@ func (tk TokenKind) String() string {
 	// Special
 	case TokenKindEOF:
 		return "EOF"
-	case TokenKindNewline:
+	case TokenKindNewLine:
 		return "NEWLINE"
 	case TokenKindWhitespace:
 		return "WHITESPACE"

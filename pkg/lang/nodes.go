@@ -52,13 +52,13 @@ type NodeList struct {
 }
 
 func (n NodeList) Eval(e *Environment) (values.Value, *values.Error) {
-	list := make(values.List, len(n.Elements))
+	list := values.NewList(len(n.Elements))
 	for i, el := range n.Elements {
 		el, err := el.Eval(e)
 		if err != nil {
 			return values.Nil, err
 		}
-		list[i] = el
+		list.Set(i, el)
 	}
 	return list.Val(), nil
 }
@@ -80,7 +80,7 @@ func (n NodeObject) Eval(e *Environment) (values.Value, *values.Error) {
 	if err := child.Execute(n.Body); err != nil {
 		return values.Nil, err
 	}
-	obj := (*values.Object)(&child.Vars)
+	obj := values.ObjectFromMap(child.Vars)
 	return obj.Val(), nil
 }
 
@@ -248,4 +248,20 @@ func (n NodeFunction) String() string {
 		return fmt.Sprintf("fn(%s) %s", n.ArgName, n.Body.String())
 	}
 	return fmt.Sprintf("fn() %s", n.Body.String())
+}
+
+type NodeReturn struct {
+	Val Node
+}
+
+func (n NodeReturn) Eval(e *Environment) (values.Value, *values.Error) {
+	v, err := n.Val.Eval(e)
+	if err != nil {
+		return values.Nil, err
+	}
+	return v, e.Return(v)
+}
+
+func (n NodeReturn) String() string {
+	return "return " + n.Val.String()
 }
