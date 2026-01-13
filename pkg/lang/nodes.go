@@ -1,6 +1,7 @@
 package lang
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/PondWader/kit/pkg/lang/values"
@@ -8,6 +9,7 @@ import (
 
 type Node interface {
 	Eval(*Environment) (values.Value, *values.Error)
+	String() string
 }
 
 type NodeExport struct {
@@ -23,6 +25,10 @@ func (n NodeExport) Eval(e *Environment) (values.Value, *values.Error) {
 	return v, nil
 }
 
+func (n NodeExport) String() string {
+	return fmt.Sprintf("export %s", n.Decl.String())
+}
+
 type NodeDeclaration struct {
 	Name  string
 	Value Node
@@ -35,6 +41,10 @@ func (n NodeDeclaration) Eval(e *Environment) (values.Value, *values.Error) {
 	}
 	e.Set(n.Name, v)
 	return v, nil
+}
+
+func (n NodeDeclaration) String() string {
+	return fmt.Sprintf("%s = %s", n.Name, n.Value.String())
 }
 
 type NodeList struct {
@@ -53,6 +63,14 @@ func (n NodeList) Eval(e *Environment) (values.Value, *values.Error) {
 	return list.Val(), nil
 }
 
+func (n NodeList) String() string {
+	var parts []string
+	for _, el := range n.Elements {
+		parts = append(parts, el.String())
+	}
+	return fmt.Sprintf("[%s]", strings.Join(parts, ", "))
+}
+
 type NodeObject struct {
 	Body []Node
 }
@@ -64,6 +82,17 @@ func (n NodeObject) Eval(e *Environment) (values.Value, *values.Error) {
 	}
 	obj := (*values.Object)(&child.Vars)
 	return obj.Val(), nil
+}
+
+func (n NodeObject) String() string {
+	var parts []string
+	for _, node := range n.Body {
+		parts = append(parts, node.String())
+	}
+	if len(parts) > 0 {
+		return fmt.Sprintf("{ %s }", strings.Join(parts, "; "))
+	}
+	return "{}"
 }
 
 type NodeBlock struct {
@@ -85,6 +114,17 @@ func (n NodeBlock) Eval(e *Environment) (values.Value, *values.Error) {
 	return values.Nil, nil
 }
 
+func (n NodeBlock) String() string {
+	var parts []string
+	for _, node := range n.Body {
+		parts = append(parts, node.String())
+	}
+	if len(parts) > 0 {
+		return fmt.Sprintf("{ %s }", strings.Join(parts, "; "))
+	}
+	return "{}"
+}
+
 type NodeLiteral struct {
 	Value values.Value
 }
@@ -93,12 +133,20 @@ func (n NodeLiteral) Eval(e *Environment) (values.Value, *values.Error) {
 	return n.Value, nil
 }
 
+func (n NodeLiteral) String() string {
+	return fmt.Sprintf("%v", n.Value)
+}
+
 type NodeIdentifier struct {
 	Ident string
 }
 
 func (n NodeIdentifier) Eval(e *Environment) (values.Value, *values.Error) {
 	return e.Get(n.Ident)
+}
+
+func (n NodeIdentifier) String() string {
+	return n.Ident
 }
 
 type NodeString struct {
@@ -121,9 +169,16 @@ func (n NodeString) Eval(e *Environment) (values.Value, *values.Error) {
 		if err != nil {
 			return values.Nil, err
 		}
-		sb.WriteString(string(v.Stringify()))
+		sb.WriteString(v.String())
 	}
 	return values.Of(sb.String()), nil
+}
+
+func (n NodeString) String() string {
+	if len(n.Parts) == 1 {
+		return fmt.Sprintf("\"%s\"", n.Parts[0].String())
+	}
+	return fmt.Sprintf("\"<string with %d parts>\"", len(n.Parts))
 }
 
 type NodeCall struct {
@@ -146,6 +201,13 @@ func (n NodeCall) Eval(e *Environment) (values.Value, *values.Error) {
 	return fn.Call(arg)
 }
 
+func (n NodeCall) String() string {
+	if n.Arg == nil {
+		return fmt.Sprintf("%s()", n.Fn.String())
+	}
+	return fmt.Sprintf("%s(%s)", n.Fn.String(), n.Arg.String())
+}
+
 type NodeKeyAccess struct {
 	Val Node
 	Key string
@@ -157,6 +219,10 @@ func (n NodeKeyAccess) Eval(e *Environment) (values.Value, *values.Error) {
 		return values.Nil, err
 	}
 	return val.Get(n.Key)
+}
+
+func (n NodeKeyAccess) String() string {
+	return fmt.Sprintf("%s.%s", n.Val.String(), n.Key)
 }
 
 type NodeFunction struct {
@@ -175,4 +241,11 @@ func (n NodeFunction) Eval(e *Environment) (values.Value, *values.Error) {
 	return values.Of(func() (values.Value, *values.Error) {
 		return n.Body.Eval(e)
 	}), nil
+}
+
+func (n NodeFunction) String() string {
+	if n.ArgName != "" {
+		return fmt.Sprintf("fn(%s) %s", n.ArgName, n.Body.String())
+	}
+	return fmt.Sprintf("fn() %s", n.Body.String())
 }

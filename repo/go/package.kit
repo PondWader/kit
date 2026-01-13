@@ -1,15 +1,15 @@
 export name = "go"
 
-export install(version) {
+export fn install(version) {
     resp = fetch("https://go.dev/dl/go${version}.${sys.OS}-${sys.ARCH}.tar.gz")
     tar.gz.extract(resp).to("/")
     link_bin_dir("/bin")
 }
 
-export versions() {
+export fn versions() {
     return fetch("https://proxy.golang.org/golang.org/toolchain/@v/list")
         .text()
-        .trim()
+        .trim_whitespace()
         .split("\n")
         .map_to_set(l -> 
             l.cut_prefix_before('-').cut_suffix_after('.')

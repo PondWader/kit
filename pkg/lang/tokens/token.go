@@ -435,7 +435,7 @@ func (tk TokenKind) String() string {
 	case TokenKindSemicolon:
 		return `";"`
 	case TokenKindArrow:
-		return `"=>"`
+		return `"->"`
 	case TokenKindRest:
 		return `"..."`
 

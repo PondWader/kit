@@ -1,6 +1,7 @@
 package lang
 
 import (
+	"bufio"
 	"errors"
 	"fmt"
 	"io"
@@ -29,13 +30,15 @@ func fmtUnexpectedToken(expected []tokens.TokenKind, got tokens.Token) error {
 }
 
 func Parse(r io.Reader) ([]Node, error) {
-	l := tokens.NewLexer(r)
-	p := parser{l}
+	br := bufio.NewReader(r)
+	l := tokens.NewLexer(br)
+	p := parser{l, br}
 	return p.parseProgram()
 }
 
 type parser struct {
 	l *tokens.Lexer
+	r *bufio.Reader
 }
 
 func (p *parser) expectToken(kind ...tokens.TokenKind) (tokens.Token, error) {
@@ -104,17 +107,19 @@ func (p *parser) parseStatementFromToken(tok tokens.Token) (n Node, err error) {
 	switch tok.Kind {
 	case tokens.TokenKindExport:
 		return p.parseExport()
+	case tokens.TokenKindFunction:
+		return p.parseFunction()
 	default:
 		return p.parseExpressionFromToken(tok)
 	}
 }
 
 func (p *parser) parseExport() (n NodeExport, err error) {
-	ident, err := p.expectToken(tokens.TokenKindIdentifier)
+	ident, err := p.expectToken(tokens.TokenKindIdentifier, tokens.TokenKindFunction)
 	if err != nil {
 		return n, err
 	}
-	node, err := p.parseExpressionFromToken(ident)
+	node, err := p.parseStatementFromToken(ident)
 	if err != nil {
 		return n, err
 	}
@@ -144,6 +149,8 @@ func (p *parser) parseExpressionFromToken(tok tokens.Token) (Node, error) {
 		var num float64
 		num, err = strconv.ParseFloat(tok.Literal, 64)
 		node = NodeLiteral{Value: values.Of(num)}
+	case tokens.TokenKindDoubleQuote:
+		node, err = p.parseString('"')
 	default:
 		return nil, fmtUnexpectedToken(nil, tok)
 	}
@@ -204,6 +211,83 @@ func (p *parser) parseKeyAccess(node Node) (n NodeKeyAccess, err error) {
 	n.Val = node
 	n.Key = next.Literal
 	return
+}
+
+func (p *parser) parseFunction() (Node, error) {
+	// Optional function name, if so it's a declaration otherwise it's an anonymous function
+	start, err := p.expectToken(tokens.TokenKindIdentifier, tokens.TokenKindLeftParen)
+	if err != nil {
+		return nil, err
+	}
+	if start.Kind == tokens.TokenKindIdentifier {
+		if _, err = p.expectToken(tokens.TokenKindLeftParen); err != nil {
+			return nil, err
+		}
+	}
+
+	var fn NodeFunction
+	tok, err := p.expectToken(tokens.TokenKindIdentifier, tokens.TokenKindRightParen)
+	if err != nil {
+		return nil, err
+	} else if tok.Kind == tokens.TokenKindIdentifier {
+		fn.ArgName = tok.Literal
+		if _, err := p.expectToken(tokens.TokenKindRightParen); err != nil {
+			return nil, err
+		}
+	}
+
+	tok, err = p.expectToken(tokens.TokenKindLeftBrace, tokens.TokenKindArrow)
+	if err != nil {
+		return nil, err
+	} else if tok.Kind == tokens.TokenKindLeftBrace {
+		b, err := p.parseBlock()
+		if err != nil {
+			return nil, err
+		}
+		b.IsFunctionBody = true
+		fn.Body = b
+	} else {
+		b, err := p.parseExpression()
+		if err != nil {
+			return nil, err
+		}
+		fn.Body = b
+	}
+
+	if start.Kind == tokens.TokenKindIdentifier {
+		return NodeDeclaration{Name: start.Literal, Value: fn}, nil
+	}
+	return fn, nil
+}
+
+func (p *parser) parseBlock() (NodeBlock, error) {
+	b := NodeBlock{
+		Body: make([]Node, 0, 16),
+	}
+
+	for {
+		first, err := p.nextStatementToken()
+		if err != nil {
+			return b, err
+		}
+		if first.Kind == tokens.TokenKindRightBrace {
+			return b, err
+		}
+
+		stmt, err := p.parseStatementFromToken(first)
+		if err != nil {
+			return b, err
+		}
+		b.Body = append(b.Body, stmt)
+
+		next, err := p.expectToken(tokens.TokenKindRightBrace, tokens.TokenKindEOF, tokens.TokenKindNewline, tokens.TokenKindSemicolon)
+		if err != nil {
+			return b, err
+		}
+		if next.Kind == tokens.TokenKindRightBrace {
+			return b, err
+		}
+	}
 }
 
 // Next returns the next token from the lexer, skipping comments

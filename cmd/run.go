@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"fmt"
+	"log"
 
 	"github.com/PondWader/kit/pkg/lang"
 )
@@ -28,12 +29,12 @@ export fn versions() {
 `
 	prog, err := lang.Parse(bytes.NewReader([]byte(code)))
 	if err != nil {
-		panic(err)
+		log.Fatalln(err)
 	}
 
 	env := lang.NewEnv()
 	if err := env.Execute(prog); err != nil {
-		panic(err)
+		log.Fatalln(err)
 	}
 
 	fmt.Println(

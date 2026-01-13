@@ -23,7 +23,7 @@ func (f Function) Call(args ...Value) (Value, *Error) {
 	if len(results) == 0 {
 		return Nil, nil
 	} else if len(results) == 1 {
-		return Of(results[0].Interface()), nil
+		return Nil, results[0].Interface().(*Error)
 	} else if len(results) == 2 {
 		err := results[1].Interface().(*Error)
 		return Of(results[0].Interface()), err

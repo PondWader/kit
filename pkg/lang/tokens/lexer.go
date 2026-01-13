@@ -101,7 +101,7 @@ var textToSymbolToken = map[string]TokenKind{
 	"=":    TokenKindAssign,
 	"==":   TokenKindLooseEquals,
 	"===":  TokenKindStrictEquals,
-	"=>":   TokenKindArrow,
+	"->":   TokenKindArrow,
 	"!":    TokenKindLogicalNot,
 	"!=":   TokenKindLooseNotEquals,
 	"!==":  TokenKindStrictNotEquals,

@@ -31,19 +31,9 @@ const (
 	TokenIdentifier
 
 	// Types
-	TokenKindInt8
-	TokenKindInt16
-	TokenKindInt32
-	TokenKindInt64
-	TokenKindUint8
-	TokenKindUint16
-	TokenKindUint32
-	TokenKindUint64
-	TokenKindFloat32
-	TokenKindFloat64
-	TokenKindString
-	TokenKindBool
-	TokenKindMap
+	TokenKindTypeNumber
+	TokenKindTypeString
+	TokenKindTypeBool
 
 	// Symbols
 	TokenColon
@@ -361,30 +351,12 @@ func getLiteralTokenKind(literal string) TokenKind {
 		return TokenRangeStatement
 
 	// Types
-	case "int8":
-		return TokenKindInt8
-	case "int16":
-		return TokenKindInt16
-	case "int32":
-		return TokenKindInt32
-	case "int64":
-		return TokenKindInt64
-	case "uint8":
-		return TokenKindUint8
-	case "uint16":
-		return TokenKindUint16
-	case "uint32":
-		return TokenKindUint32
-	case "uint64":
-		return TokenKindUint64
-	case "float32":
-		return TokenKindFloat32
-	case "float64":
-		return TokenKindFloat64
+	case "number":
+		return TokenKindTypeNumber
 	case "string":
-		return TokenKindString
+		return TokenKindTypeString
 	case "bool":
-		return TokenKindBool
+		return TokenKindTypeBool
 	}
 
 	for _, char := range literal {

@@ -99,13 +99,18 @@ func (v Value) Stringify() String {
 	return String(v.Kind().String())
 }
 
+func (v Value) String() string {
+	return string(v.Stringify())
+}
+
 func (v Value) ToString() (String, bool) {
 	s, ok := v.Obj.(String)
 	return s, ok
 }
 
-func (v Value) ToNumber() {
-
+func (v Value) ToNumber() (n float64, ok bool) {
+	n, ok = v.Obj.(float64)
+	return
 }
 
 func (v Value) ToBool() (b bool, ok bool) {

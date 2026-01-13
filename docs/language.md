@@ -23,8 +23,8 @@ In the top level scope all syntax is acceptable except function calls.
 Functions are only allowed to take a **single** argument and return a **single value**. The reasoning for this is multiple arguments can impaire readability of the code. It is better to accept an object, list or use method chaining. For example `min(a, b)` could be more clear as `min([a, b])` which shows the reader that the values are not doing unique things. `split("a.b.c", ".")` is more understandable when written as `split("a.b.c").at(".")`. This could be implemented using an implicit object return:
 
 ```
-split(str) -> {
-    at(sep) -> {
+fn split(str) -> {
+    fn at(sep) -> {
         # ...
         return parts
     }
@@ -94,11 +94,11 @@ Strings are wrapped in regular quotation marks (`"like this"`). All strings can 
 There are no classes as such. But have a look at this syntax
 
 ```
-Person(person) -> {
+fn Person(person) -> {
     name = person.name
     date_of_birth = person.data_of_birth
 
-    age() {
+    fn age() {
         # ... Calculate age
         return years
     }
