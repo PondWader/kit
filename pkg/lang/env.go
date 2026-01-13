@@ -16,6 +16,7 @@ func NewEnv() *Environment {
 	return &Environment{
 		Exports: make(map[string]values.Value),
 		Vars:    make(map[string]values.Value),
+		Exec:    &ExecutionControl{},
 	}
 }
 

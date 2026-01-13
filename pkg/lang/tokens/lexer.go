@@ -249,7 +249,7 @@ func (l *Lexer) getTextToken(literal string) (Token, error) {
 		return Token{Kind: TokenKindFinally, Literal: literal}, nil
 	case "for":
 		return Token{Kind: TokenKindFor, Literal: literal}, nil
-	case "function":
+	case "fn":
 		return Token{Kind: TokenKindFunction, Literal: literal}, nil
 	case "if":
 		return Token{Kind: TokenKindIf, Literal: literal}, nil

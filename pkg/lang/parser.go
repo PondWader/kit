@@ -70,12 +70,28 @@ func (p *parser) parseProgram() ([]Node, error) {
 }
 
 func (p *parser) parseStatement() (Node, error) {
-	tok, err := p.nextAfterWhiteSpace()
+	tok, err := p.nextStatementToken()
 	if err != nil {
 		return nil, err
 	}
 
 	return p.parseStatementFromToken(tok)
+}
+
+// Returns the next token that could form a valid statemen (skips new lines, white space and semicolons).
+// Returns an io.EOF error upon reaching an EOF token.
+func (p *parser) nextStatementToken() (tokens.Token, error) {
+	token, err := p.next()
+	if err != nil {
+		return token, err
+	}
+	if token.Kind == tokens.TokenKindNewline || token.Kind == tokens.TokenKindSemicolon || token.Kind == tokens.TokenKindWhitespace {
+		return p.nextStatementToken()
+	}
+	if token.Kind == tokens.TokenKindEOF {
+		return token, io.EOF
+	}
+	return token, err
 }
 
 func (p *parser) parseStatementFromToken(tok tokens.Token) (n Node, err error) {

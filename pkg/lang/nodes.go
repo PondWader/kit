@@ -15,7 +15,7 @@ type NodeExport struct {
 }
 
 func (n NodeExport) Eval(e *Environment) (values.Value, *values.Error) {
-	v, err := n.Decl.Value.Eval(e)
+	v, err := n.Decl.Eval(e)
 	if err != nil {
 		return values.Nil, err
 	}
