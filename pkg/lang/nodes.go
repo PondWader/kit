@@ -104,6 +104,7 @@ func (n NodeBlock) Eval(e *Environment) (values.Value, *values.Error) {
 	child := e.NewChild()
 	if n.IsFunctionBody {
 		child.Exec = NewExec()
+		child.Exec.ReturnAllowed = true
 	}
 	if err := child.Execute(n.Body); err != nil {
 		return values.Nil, err

@@ -39,7 +39,7 @@ export fn versions() {
         .text()
         .trim_whitespace()
         .split("\n")
-        .map_to_set(l -> 
+        .map(l -> 
             l.cut_prefix_before("-").cut_suffix_after(".")
         )
 }
@@ -55,6 +55,18 @@ export fn versions() {
 		log.Fatalln(err)
 	}
 
-	fmt.Println(env.Exports["versions"].Call())
+	v, e := env.Exports["versions"].Call()
+	if e != nil {
+		log.Fatalln(e)
+	}
+	l, ok := v.ToList()
+	if !ok {
+		log.Fatalln("expected list but got ", v.Kind())
+	}
+	s := l.AsSlice()
+	// for _, ver := range s {
+	// 	// fmt.Println(ver)
+	// }
+	_ = s
 
 }

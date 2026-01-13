@@ -10,13 +10,11 @@ func Of(v any) Value {
 		return v
 	case string:
 		return Value{Obj: String(v)}
-	case String:
-		return Value{Obj: v}
 	case int:
 		return Value{Obj: float64(v)}
 	case float64:
 		return Value{Obj: float64(v)}
-	case bool, *Object, *List, nil:
+	case bool, *Object, *List, nil, Function, String:
 		return Value{Obj: v}
 	case Object, List:
 		return Value{Obj: &v}
@@ -72,7 +70,11 @@ func (v Value) Get(key string) (Value, *Error) {
 	if !ok {
 		return Nil, NewError("key \"" + key + "\" does not exist on value")
 	}
-	return k.Get(key), nil
+	member := k.Get(key)
+	if member == Nil {
+		return Nil, NewError("key \"" + key + "\" does not exist on value")
+	}
+	return member, nil
 }
 
 func (v Value) IsCallable() bool {
@@ -129,5 +131,10 @@ func (v Value) ToList() (l *List, ok bool) {
 
 func (v Value) ToObject() (o *Object, ok bool) {
 	o, ok = v.Obj.(*Object)
+	return
+}
+
+func (v Value) ToFunction() (f Function, ok bool) {
+	f, ok = v.Obj.(Function)
 	return
 }

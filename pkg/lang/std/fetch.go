@@ -24,7 +24,7 @@ func fetch(url values.Value) (values.Value, error) {
 	if err != nil {
 		return values.Nil, err
 	}
-	_ = req
+	req.Header.Set("User-Agent", "Kit Package Manager")
 
 	resp := PendingFetch{req}
 
