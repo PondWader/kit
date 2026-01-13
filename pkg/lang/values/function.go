@@ -1,9 +1,32 @@
 package values
 
-import "github.com/PondWader/kit/pkg/lang/env"
+import (
+	"reflect"
+)
 
-type Function struct{}
+type Function struct {
+	f reflect.Value
+}
 
-func (f Function) Call(env *env.Environment, args ...any) {
+func (f Function) Call(args ...Value) (Value, *Error) {
+	if len(args) != f.f.Type().NumIn() {
+		return Nil, NewError("incorrect arg count")
+	}
 
+	reflectArgs := make([]reflect.Value, len(args))
+	for i, arg := range args {
+		reflectArgs[i] = reflect.ValueOf(arg)
+	}
+
+	results := f.f.Call(reflectArgs)
+
+	if len(results) == 0 {
+		return Nil, nil
+	} else if len(results) == 1 {
+		return Of(results[0].Interface()), nil
+	} else if len(results) == 2 {
+		err := results[1].Interface().(*Error)
+		return Of(results[0].Interface()), err
+	}
+	return Nil, nil
 }

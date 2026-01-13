@@ -33,3 +33,7 @@ func (s String) Get(key string) Value {
 		return Nil
 	}
 }
+
+func (s String) Val() Value {
+	return Value{s}
+}

@@ -2,12 +2,12 @@ package values
 
 import (
 	"reflect"
-
-	"github.com/PondWader/kit/pkg/lang/env"
 )
 
 func Of(v any) Value {
 	switch v := v.(type) {
+	case Value:
+		return v
 	case string:
 		return Value{Obj: String(v)}
 	case String:
@@ -16,11 +16,15 @@ func Of(v any) Value {
 		return Value{Obj: float64(v)}
 	case float64:
 		return Value{Obj: float64(v)}
-	case bool, *Object, List, nil:
+	case bool, *Object, *List, nil:
 		return Value{Obj: v}
-	case Object:
+	case Object, List:
 		return Value{Obj: &v}
 	default:
+		rv := reflect.ValueOf(v)
+		if rv.Kind() == reflect.Func {
+			return Value{Obj: Function{f: rv}}
+		}
 		panic(reflect.TypeOf(v).String() + " is not a valid kitlang type")
 	}
 }
@@ -34,29 +38,71 @@ type Keyable interface {
 }
 
 type Callable interface {
-	Call(e *env.Environment, args ...any) Value
+	Call(args ...Value) (Value, *Error)
 }
 
-func (v Value) Get(key string) Value {
+func (v Value) Kind() Kind {
+	switch v.Obj.(type) {
+	case float64:
+		return KindNumber
+	case String:
+		return KindString
+	case *Object:
+		return KindObject
+	case *List:
+		return KindList
+	case Function:
+		return KindFunction
+	case nil:
+		return KindNil
+	default:
+		return KindUnknownKind
+	}
+}
+
+func (v Value) Get(key string) (Value, *Error) {
 	if v.Obj == nil {
-		return v
+		return Nil, NewError("key \"" + key + "\" does not exist on value")
 	}
 	k, ok := v.Obj.(Keyable)
 	if !ok {
-		return Value{}
+		return Nil, NewError("key \"" + key + "\" does not exist on value")
 	}
-	return k.Get(key)
+	return k.Get(key), nil
 }
 
-func (v Value) Call(e *env.Environment, args ...any) Value {
+func (v Value) IsCallable() bool {
+	_, ok := v.Obj.(Callable)
+	return ok
+}
+
+func (v Value) Call(args ...Value) (Value, *Error) {
 	c, ok := v.Obj.(Callable)
 	if !ok {
-		panic(NewError("value is not callable"))
+		return Nil, NewError("value is not callable")
 	}
-	return c.Call(e, args)
+	return c.Call(args...)
 }
 
-func (v Value) ToString() {}
+func (v Value) Stringify() String {
+	str, ok := v.ToString()
+	if ok {
+		return str
+	}
+	toString, err := v.Get("to_string")
+	if err == nil && toString.IsCallable() {
+		str, err := toString.Call()
+		if str, ok := str.ToString(); err == nil && ok {
+			return str
+		}
+	}
+	return String(v.Kind().String())
+}
+
+func (v Value) ToString() (String, bool) {
+	s, ok := v.Obj.(String)
+	return s, ok
+}
 
 func (v Value) ToNumber() {
 
@@ -67,10 +113,12 @@ func (v Value) ToBool() (b bool, ok bool) {
 	return
 }
 
-func (v Value) ToList() {
-
+func (v Value) ToList() (l *List, ok bool) {
+	l, ok = v.Obj.(*List)
+	return
 }
 
-func (v Value) ToObject() {
-
+func (v Value) ToObject() (o *Object, ok bool) {
+	o, ok = v.Obj.(*Object)
+	return
 }

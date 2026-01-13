@@ -6,11 +6,11 @@ import (
 	"os"
 )
 
-type TokenType uint8
+type TokenKind uint8
 
 const (
 	// Statements
-	TokenIfStatement TokenType = iota
+	TokenIfStatement TokenKind = iota
 	TokenElseStatement
 	TokenFunctionDeclaration
 	TokenImportStatement
@@ -31,19 +31,19 @@ const (
 	TokenIdentifier
 
 	// Types
-	TokenTypeInt8
-	TokenTypeInt16
-	TokenTypeInt32
-	TokenTypeInt64
-	TokenTypeUint8
-	TokenTypeUint16
-	TokenTypeUint32
-	TokenTypeUint64
-	TokenTypeFloat32
-	TokenTypeFloat64
-	TokenTypeString
-	TokenTypeBool
-	TokenTypeMap
+	TokenKindInt8
+	TokenKindInt16
+	TokenKindInt32
+	TokenKindInt64
+	TokenKindUint8
+	TokenKindUint16
+	TokenKindUint32
+	TokenKindUint64
+	TokenKindFloat32
+	TokenKindFloat64
+	TokenKindString
+	TokenKindBool
+	TokenKindMap
 
 	// Symbols
 	TokenColon
@@ -73,7 +73,7 @@ const (
 )
 
 type Token struct {
-	Type    TokenType
+	Kind    TokenKind
 	Literal string
 	Line    int
 }
@@ -100,12 +100,12 @@ func (l *Lexer) Next() (Token, error) {
 		}
 
 		// Check character is a valid token
-		if token, err := getCharTokenType(char); err == nil {
+		if token, err := getCharTokenKind(char); err == nil {
 			if token == TokenNewLine {
 				l.currentLine++
 			}
 			return Token{
-				Type:    token,
+				Kind:    token,
 				Literal: char,
 				Line:    l.currentLine,
 			}, nil
@@ -118,7 +118,7 @@ func (l *Lexer) Next() (Token, error) {
 				return Token{}, err
 			}
 			return Token{
-				Type:    TokenString,
+				Kind:    TokenString,
 				Literal: strContent,
 				Line:    l.currentLine,
 			}, nil
@@ -133,14 +133,14 @@ func (l *Lexer) Next() (Token, error) {
 			// Check if the next character terminates a token
 			if nextChar == "" || nextChar == " " || nextChar == "\n" || nextChar == "\r" || nextChar == "\t" || nextChar == "\"" {
 				endOfToken = true
-			} else if _, err := getCharTokenType(nextChar); err == nil {
+			} else if _, err := getCharTokenKind(nextChar); err == nil {
 				endOfToken = true
 			}
 		}
 
 		if endOfToken {
 			return Token{
-				Type:    getLiteralTokenType(currentStr),
+				Kind:    getLiteralTokenKind(currentStr),
 				Literal: currentStr,
 				Line:    l.currentLine,
 			}, nil
@@ -148,7 +148,7 @@ func (l *Lexer) Next() (Token, error) {
 	}
 
 	return Token{
-		Type:    TokenEOF,
+		Kind:    TokenEOF,
 		Literal: "EOF",
 		Line:    l.currentLine,
 	}, nil
@@ -240,13 +240,13 @@ func (l *Lexer) SetCursor(cursor int) {
 // Moves the cursor back to the start of the previously read token so it will be read at the next call of Next().
 // Only the last read token should be passed to Unread.
 func (l *Lexer) Unread(token Token) {
-	if token.Type == TokenEOF {
+	if token.Kind == TokenEOF {
 		return
 	}
 	l.cursor -= len(token.Literal)
-	if token.Type == TokenString {
+	if token.Kind == TokenString {
 		l.cursor -= 2 // Account for quotation marks on either side
-	} else if token.Type == TokenNewLine {
+	} else if token.Kind == TokenNewLine {
 		l.currentLine--
 	}
 }
@@ -275,7 +275,7 @@ func (pos LexerPos) GoTo() (undo func()) {
 	}
 }
 
-func getCharTokenType(char string) (TokenType, error) {
+func getCharTokenKind(char string) (TokenKind, error) {
 	switch char {
 	case ":":
 		return TokenColon, nil
@@ -325,7 +325,7 @@ func getCharTokenType(char string) (TokenType, error) {
 	return 0, errors.New("char provided is not a valid token")
 }
 
-func getLiteralTokenType(literal string) TokenType {
+func getLiteralTokenKind(literal string) TokenKind {
 	switch literal {
 	case "true":
 		return TokenTrue
@@ -362,29 +362,29 @@ func getLiteralTokenType(literal string) TokenType {
 
 	// Types
 	case "int8":
-		return TokenTypeInt8
+		return TokenKindInt8
 	case "int16":
-		return TokenTypeInt16
+		return TokenKindInt16
 	case "int32":
-		return TokenTypeInt32
+		return TokenKindInt32
 	case "int64":
-		return TokenTypeInt64
+		return TokenKindInt64
 	case "uint8":
-		return TokenTypeUint8
+		return TokenKindUint8
 	case "uint16":
-		return TokenTypeUint16
+		return TokenKindUint16
 	case "uint32":
-		return TokenTypeUint32
+		return TokenKindUint32
 	case "uint64":
-		return TokenTypeUint64
+		return TokenKindUint64
 	case "float32":
-		return TokenTypeFloat32
+		return TokenKindFloat32
 	case "float64":
-		return TokenTypeFloat64
+		return TokenKindFloat64
 	case "string":
-		return TokenTypeString
+		return TokenKindString
 	case "bool":
-		return TokenTypeBool
+		return TokenKindBool
 	}
 
 	for _, char := range literal {

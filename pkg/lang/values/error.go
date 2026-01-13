@@ -4,8 +4,8 @@ type Error struct {
 	Msg String
 }
 
-func NewError(msg string) Error {
-	return Error{Msg: String(msg)}
+func NewError(msg string) *Error {
+	return &Error{Msg: String(msg)}
 }
 
 func (s Error) Get(key string) Value {
@@ -15,4 +15,8 @@ func (s Error) Get(key string) Value {
 	default:
 		return Nil
 	}
+}
+
+func (e Error) Error() string {
+	return string(e.Msg)
 }
