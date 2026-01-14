@@ -173,14 +173,12 @@ func clone(path string, o *git.CloneOptions, r *render.Renderer) (*git.Repositor
 	// Try again with basic auth
 	c := gitcli.Client{
 		Prompt: func(prompt string, secret bool) (resp string, err error) {
-			r.Println("got prompt", prompt)
-			return "", nil
+			return "", errors.New("input prompts not supported yet")
 		},
 	}
 
 	cred, err := c.GetCredentials(o.URL)
 	if err != nil {
-		r.Println(err)
 		return repo, cloneErr
 	}
 	o.Auth = &http.BasicAuth{

@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"io"
+	"os"
 	"os/exec"
 	"strings"
 )
@@ -41,21 +43,34 @@ func (c Client) GetCredentials(url string) (cred Credential, err error) {
 }
 
 func (c Client) runCmd(prompt PromptHandler, in string, args ...string) ([]string, error) {
-	askPass, err := c.spawnAskPassServer()
-	if err != nil {
-		return nil, err
+	var inputErr error
+	var stdin io.WriteCloser
+	var cmd *exec.Cmd
+	var err error
+	askPass, askPassErr := c.spawnAskPassServer(func(e error) {
+		if e != nil {
+			inputErr = e
+			if cmd != nil {
+				cmd.Process.Kill()
+			}
+		}
+	})
+	if askPassErr == nil {
+		defer askPass.Close()
 	}
-	defer askPass.Close()
 
-	cmd := exec.Command("git", args...)
-	cmd.Env = append(cmd.Env, "GIT_ASKPASS="+askPass.Path, "GIT_TERMINAL_PROMPT=0")
+	cmd = exec.Command("git", args...)
+	cmd.Env = append(os.Environ(), "GIT_TERMINAL_PROMPT=0")
+	if askPassErr == nil {
+		cmd.Env = append(cmd.Env, "GIT_ASKPASS="+askPass.Path)
+	}
 
 	stderr := bytes.NewBuffer(nil)
 	stdout := outputHandler{prompt: prompt}
 
 	cmd.Stdout = &stdout
 	cmd.Stderr = stderr
-	stdin, err := cmd.StdinPipe()
+	stdin, err = cmd.StdinPipe()
 	if err != nil {
 		return nil, err
 	}
@@ -71,6 +86,10 @@ func (c Client) runCmd(prompt PromptHandler, in string, args ...string) ([]strin
 	if stderr.Len() != 0 {
 		err = errors.New(stderr.String())
 	}
+	if inputErr != nil {
+		err = inputErr
+	}
+
 	return stdout.lines, err
 }
 
