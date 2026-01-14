@@ -6,13 +6,17 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
+	"strings"
 	"time"
 
+	"github.com/PondWader/kit/internal/gitcli"
 	"github.com/PondWader/kit/internal/render"
 	"github.com/PondWader/kit/pkg/db"
 	"github.com/PondWader/kit/pkg/lang"
 	"github.com/go-git/go-git/v6"
 	"github.com/go-git/go-git/v6/plumbing"
+	"github.com/go-git/go-git/v6/plumbing/transport"
+	"github.com/go-git/go-git/v6/plumbing/transport/http"
 )
 
 type Repo struct {
@@ -24,7 +28,7 @@ type Repo struct {
 }
 
 func (k *Kit) loadRepos() error {
-	reposFile, err := k.Home.Open("repos.kit")
+	reposFile, err := k.Home.Open("repositories.kit")
 	if err != nil {
 		return err
 	}
@@ -32,16 +36,16 @@ func (k *Kit) loadRepos() error {
 
 	env, err := lang.Execute(reposFile)
 	if err != nil {
-		return fmt.Errorf("error loading %s: %w", filepath.Join(k.Home.Name(), "repos.kit"), err)
+		return fmt.Errorf("error loading %s: %w", filepath.Join(k.Home.Name(), "repositories.kit"), err)
 	}
 	reposV, err := env.GetExport("repositories")
 	if err != nil {
-		return fmt.Errorf("error loading %s: %w", filepath.Join(k.Home.Name(), "repos.kit"), err)
+		return fmt.Errorf("error loading %s: %w", filepath.Join(k.Home.Name(), "repositories.kit"), err)
 	}
 
 	l, ok := reposV.ToList()
 	if !ok {
-		return fmt.Errorf("error loading %s: expected \"repositories\" export to be a list", filepath.Join(k.Home.Name(), "repos.kit"))
+		return fmt.Errorf("error loading %s: expected \"repositories\" export to be a list", filepath.Join(k.Home.Name(), "repositories.kit"))
 	}
 
 	repos := make([]Repo, l.Size())
@@ -51,33 +55,33 @@ func (k *Kit) loadRepos() error {
 
 		o, ok := repoV.ToObject()
 		if !ok {
-			return fmt.Errorf("error loading %s: expected repository item to be an object", filepath.Join(k.Home.Name(), "repos.kit"))
+			return fmt.Errorf("error loading %s: expected repository item to be an object", filepath.Join(k.Home.Name(), "repositories.kit"))
 		}
 		repo.Name, err = o.GetString("name")
 		if err != nil {
-			return fmt.Errorf("error loading %s: %w", filepath.Join(k.Home.Name(), "repos.kit"), err)
+			return fmt.Errorf("error loading %s: %w", filepath.Join(k.Home.Name(), "repositories.kit"), err)
 		}
 		repo.Type, err = o.GetString("type")
 		if err != nil {
-			return fmt.Errorf("error loading %s: %w", filepath.Join(k.Home.Name(), "repos.kit"), err)
+			return fmt.Errorf("error loading %s: %w", filepath.Join(k.Home.Name(), "repositories.kit"), err)
 		}
 		repo.URL, err = o.GetString("url")
 		if err != nil {
-			return fmt.Errorf("error loading %s: %w", filepath.Join(k.Home.Name(), "repos.kit"), err)
+			return fmt.Errorf("error loading %s: %w", filepath.Join(k.Home.Name(), "repositories.kit"), err)
 		}
 		repo.Branch, err = o.GetString("branch")
 		if err != nil {
-			return fmt.Errorf("error loading %s: %w", filepath.Join(k.Home.Name(), "repos.kit"), err)
+			return fmt.Errorf("error loading %s: %w", filepath.Join(k.Home.Name(), "repositories.kit"), err)
 		}
 		repo.Dir, err = o.GetString("dir")
 		if err != nil {
-			return fmt.Errorf("error loading %s: %w", filepath.Join(k.Home.Name(), "repos.kit"), err)
+			return fmt.Errorf("error loading %s: %w", filepath.Join(k.Home.Name(), "repositories.kit"), err)
 		}
 
 		if slices.ContainsFunc(repos, func(r Repo) bool {
 			return r.Name == repo.Name
 		}) {
-			return fmt.Errorf("error loading %s: name \"%s\" is duplicated", filepath.Join(k.Home.Name(), "repos.kit"), repo.Name)
+			return fmt.Errorf("error loading %s: name \"%s\" is duplicated", filepath.Join(k.Home.Name(), "repositories.kit"), repo.Name)
 		}
 
 		repos[i] = repo
@@ -94,7 +98,7 @@ func (k *Kit) checkForAutoRepoPull() error {
 		return err
 	}
 
-	finfo, err := k.Home.Stat("repos.kit")
+	finfo, err := k.Home.Stat("repositories.kit")
 	if err != nil && err != db.ErrNoData {
 		return err
 	}
@@ -108,33 +112,81 @@ func (k *Kit) checkForAutoRepoPull() error {
 }
 
 func (k *Kit) PullRepos() error {
+	r := render.NewRenderer(os.Stdout)
+	defer r.Stop()
+
 	s := render.NewSpinner("Pulling repositories...")
 	defer s.Stop()
-
-	r := render.NewRenderer(os.Stdout)
 	r.Mount(s)
 
-	time.Sleep(4 * time.Second) // Run for some time to simulate work
-
-	// dirs, err := k.repoDirs()
-	// if err != nil {
-	// 	return fmt.Errorf("error pulling repositories: %w", err)
-	// }
+	dirs, err := k.repoDirs()
+	if err != nil {
+		return fmt.Errorf("error pulling repositories: %w", err)
+	}
 
 	for _, repo := range k.Repos {
 		if repo.Type != "git" {
 			return errors.New("error pulling repos: repository type \"" + repo.Type + "\" is not supported (only \"git\" is supported at this time)")
 		}
-		_, err := git.PlainClone(filepath.Join(k.Home.Name(), "repos", repo.Name), &git.CloneOptions{
-			URL:           repo.URL,
-			ReferenceName: plumbing.ReferenceName(repo.Branch),
-			SingleBranch:  true,
-			Depth:         0,
-		})
-		if err != nil {
-			return err
+
+		// If it doesn't exist, have to clone it fresh
+		if !slices.Contains(dirs, repo.Name) {
+			cloneDir, err := os.MkdirTemp("", "kit_clone")
+			if err != nil {
+				return fmt.Errorf("error pulling repos: %w", err)
+			}
+
+			_, err = clone(cloneDir, &git.CloneOptions{
+				URL:           repo.URL,
+				ReferenceName: plumbing.ReferenceName(repo.Branch),
+				SingleBranch:  true,
+				Depth:         0,
+			}, r)
+			if err != nil {
+				return err
+			}
+
+			targetDir := filepath.Join(k.Home.Name(), "repos", repo.Name)
+			_ = targetDir
 		}
+
 	}
 
 	return nil
+}
+
+func clone(path string, o *git.CloneOptions, r *render.Renderer) (*git.Repository, error) {
+	repo, err := git.PlainClone(path, o)
+	if err == nil {
+		return repo, err
+	} else if !errors.Is(err, transport.ErrAuthenticationRequired) {
+		return repo, err
+	} else if !strings.HasPrefix(o.URL, "https://") && !strings.HasPrefix(o.URL, "http://") {
+		return repo, err
+	}
+	cloneErr := err
+
+	if os.RemoveAll(path) != nil {
+		return repo, cloneErr
+	}
+
+	// Try again with basic auth
+	c := gitcli.Client{
+		Prompt: func(prompt string, secret bool) (resp string, err error) {
+			r.Println("got prompt", prompt)
+			return "", nil
+		},
+	}
+
+	cred, err := c.GetCredentials(o.URL)
+	if err != nil {
+		r.Println(err)
+		return repo, cloneErr
+	}
+	o.Auth = &http.BasicAuth{
+		Username: cred.Username,
+		Password: cred.Password,
+	}
+
+	return git.PlainClone(path, o)
 }

@@ -18,6 +18,7 @@ type Spinner struct {
 	ticker       *time.Ticker
 
 	stopped bool
+	success bool
 }
 
 func NewSpinner(text string) *Spinner {
@@ -56,6 +57,9 @@ func (s *Spinner) View() string {
 	defer s.mu.Unlock()
 
 	if s.stopped {
+		if s.success {
+			return ansi.Green("✔") + " " + s.text
+		}
 		return ""
 	}
 	return ansi.Cyan(s.Frames[s.currentFrame]) + " " + s.text
@@ -65,8 +69,20 @@ func (s *Spinner) Stop() {
 	s.ticker.Stop()
 
 	s.mu.Lock()
+	if s.stopped {
+		s.mu.Unlock()
+		return
+	}
 	s.stopped = true
 	s.mu.Unlock()
 
 	s.End()
+}
+
+func (s *Spinner) Succeed(msg string) {
+	s.mu.Lock()
+	s.text = msg
+	s.success = true
+	s.mu.Unlock()
+	s.Stop()
 }

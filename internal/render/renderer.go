@@ -54,6 +54,10 @@ func NewRenderer(out *os.File) *Renderer {
 	return r
 }
 
+func (r *Renderer) Println(v ...any) {
+	r.Mount(staticComponent{fmt.Sprint(v...)})
+}
+
 func (r *Renderer) Update() {
 	// If there is already a pending update, no need to send twice
 	select {
@@ -162,3 +166,19 @@ func countLines(line string, width int) int {
 
 	return lineCount
 }
+
+type staticComponent struct {
+	Text string
+}
+
+// SetUpdateChan implements [Component].
+func (s staticComponent) SetUpdateChan(c chan ComponentUpdate) {
+	close(c)
+}
+
+// View implements [Component].
+func (s staticComponent) View() string {
+	return s.Text
+}
+
+var _ Component = (*staticComponent)(nil)

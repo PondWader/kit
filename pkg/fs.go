@@ -44,11 +44,11 @@ func (k *Kit) setupHome() error {
 		}
 	}
 
-	// Check for missing "repos.kit" to specify the repositories and add it if it doesn't exist
+	// Check for missing "repositories.kit" to specify the repositories and add it if it doesn't exist
 	if !slices.ContainsFunc(entries, func(e os.DirEntry) bool {
-		return e.Name() == "repos.kit"
+		return e.Name() == "repositories.kit"
 	}) {
-		f, err := k.Home.OpenFile("repos.kit", os.O_RDWR|os.O_CREATE, 0644)
+		f, err := k.Home.OpenFile("repositories.kit", os.O_RDWR|os.O_CREATE, 0644)
 		if err != nil {
 			return err
 		}
