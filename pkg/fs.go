@@ -1,6 +1,7 @@
 package kit
 
 import (
+	"io/fs"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -51,6 +52,7 @@ func (k *Kit) setupHome() error {
 		if err != nil {
 			return err
 		}
+		defer f.Close()
 		_, err = f.WriteString(include.Repositories)
 		if err != nil {
 			return err
@@ -65,6 +67,23 @@ func (k *Kit) setupHome() error {
 	k.DB = db
 
 	return nil
+}
+
+func (k *Kit) repoDirs() ([]string, error) {
+	fs := k.Home.FS().(fs.ReadDirFS)
+	entries, err := fs.ReadDir("repos")
+	if err != nil {
+		return nil, err
+	}
+
+	var dirs []string
+	for _, entry := range entries {
+		if !entry.Type().IsRegular() {
+			continue
+		}
+		dirs = append(dirs, entry.Name())
+	}
+	return dirs, nil
 }
 
 func resolveHome() (string, error) {

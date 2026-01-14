@@ -1,12 +1,18 @@
 package kit
 
 import (
+	"errors"
 	"fmt"
+	"os"
 	"path/filepath"
+	"slices"
 	"time"
 
+	"github.com/PondWader/kit/internal/render"
 	"github.com/PondWader/kit/pkg/db"
 	"github.com/PondWader/kit/pkg/lang"
+	"github.com/go-git/go-git/v6"
+	"github.com/go-git/go-git/v6/plumbing"
 )
 
 type Repo struct {
@@ -22,6 +28,7 @@ func (k *Kit) loadRepos() error {
 	if err != nil {
 		return err
 	}
+	defer reposFile.Close()
 
 	env, err := lang.Execute(reposFile)
 	if err != nil {
@@ -67,6 +74,12 @@ func (k *Kit) loadRepos() error {
 			return fmt.Errorf("error loading %s: %w", filepath.Join(k.Home.Name(), "repos.kit"), err)
 		}
 
+		if slices.ContainsFunc(repos, func(r Repo) bool {
+			return r.Name == repo.Name
+		}) {
+			return fmt.Errorf("error loading %s: name \"%s\" is duplicated", filepath.Join(k.Home.Name(), "repos.kit"), repo.Name)
+		}
+
 		repos[i] = repo
 	}
 
@@ -95,6 +108,33 @@ func (k *Kit) checkForAutoRepoPull() error {
 }
 
 func (k *Kit) PullRepos() error {
-	fmt.Println("Pulling repos...")
+	s := render.NewSpinner("Pulling repositories...")
+	defer s.Stop()
+
+	r := render.NewRenderer(os.Stdout)
+	r.Mount(s)
+
+	time.Sleep(4 * time.Second) // Run for some time to simulate work
+
+	// dirs, err := k.repoDirs()
+	// if err != nil {
+	// 	return fmt.Errorf("error pulling repositories: %w", err)
+	// }
+
+	for _, repo := range k.Repos {
+		if repo.Type != "git" {
+			return errors.New("error pulling repos: repository type \"" + repo.Type + "\" is not supported (only \"git\" is supported at this time)")
+		}
+		_, err := git.PlainClone(filepath.Join(k.Home.Name(), "repos", repo.Name), &git.CloneOptions{
+			URL:           repo.URL,
+			ReferenceName: plumbing.ReferenceName(repo.Branch),
+			SingleBranch:  true,
+			Depth:         0,
+		})
+		if err != nil {
+			return err
+		}
+	}
+
 	return nil
 }
