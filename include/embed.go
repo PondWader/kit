@@ -1,6 +1,12 @@
 package include
 
-import _ "embed"
+import (
+	"embed"
+	_ "embed"
+)
 
 //go:embed repositories.kit
 var Repositories string
+
+//go:embed migrations/*
+var Migrations embed.FS

@@ -1,0 +1,7 @@
+CREATE TABLE IF NOT EXISTS core (
+    last_pulled_at DATETIME
+);
+
+CREATE TABLE IF NOT EXISTS installations (
+    id INTEGER PRIMARY KEY AUTOINCREMENT
+);
