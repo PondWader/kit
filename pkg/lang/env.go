@@ -1,6 +1,8 @@
 package lang
 
 import (
+	"io"
+
 	"github.com/PondWader/kit/pkg/lang/std"
 	"github.com/PondWader/kit/pkg/lang/values"
 )
@@ -9,16 +11,28 @@ type Environment struct {
 	Exports map[string]values.Value
 	Vars    map[string]values.Value
 
-	Exec   *ExecutionControl
-	parent *Environment
+	control *ExecutionControl
+	parent  *Environment
 }
 
 func NewEnv() *Environment {
 	return &Environment{
 		Exports: make(map[string]values.Value),
 		Vars:    make(map[string]values.Value),
-		Exec:    &ExecutionControl{},
+		control: &ExecutionControl{},
 	}
+}
+
+func Execute(r io.Reader) (*Environment, error) {
+	env := NewEnv()
+	prog, err := Parse(r)
+	if err != nil {
+		return nil, err
+	}
+	if err := env.Execute(prog); err != nil {
+		return nil, err
+	}
+	return env, nil
 }
 
 func (e *Environment) LoadStd() {
@@ -35,6 +49,17 @@ func (e *Environment) Get(name string) (values.Value, *values.Error) {
 		return v, values.NewError(name + " does not exist in scope")
 	}
 	return v, nil
+}
+
+func (e *Environment) GetExport(name string) (values.Value, error) {
+	v, ok := e.Exports[name]
+	if ok {
+		return v, nil
+	}
+	if e.parent != nil {
+		return e.parent.GetExport(name)
+	}
+	return values.Nil, values.NewError("export named " + name + " does not exist")
 }
 
 func (e *Environment) Set(name string, value values.Value) {
@@ -55,7 +80,7 @@ func (e *Environment) Execute(prog []Node) *values.Error {
 		if _, err := n.Eval(e); err != nil {
 			return err
 		}
-		if e.Exec.Returned {
+		if e.control.Returned {
 			return nil
 		}
 	}
@@ -75,16 +100,16 @@ func (e *Environment) getVarEnv(name string) (*Environment, values.Value) {
 func (e *Environment) NewChild() *Environment {
 	child := NewEnv()
 	child.parent = e
-	child.Exec = e.Exec
+	child.control = e.control
 	return e
 }
 
 func (e *Environment) Return(v values.Value) *values.Error {
-	if e.Exec == nil || !e.Exec.ReturnAllowed {
+	if e.control == nil || !e.control.ReturnAllowed {
 		return values.NewError("return not allowed in this context")
 	}
-	e.Exec.ReturnVal = v
-	e.Exec.Returned = true
+	e.control.ReturnVal = v
+	e.control.Returned = true
 	return nil
 }
 

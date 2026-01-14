@@ -165,6 +165,10 @@ func (p *parser) parseExpressionFromToken(tok tokens.Token) (Node, error) {
 		node = NodeLiteral{Value: values.Of(num)}
 	case tokens.TokenKindDoubleQuote:
 		node, err = p.parseString('"')
+	case tokens.TokenKindLeftSquareBracket:
+		node, err = p.parseList()
+	case tokens.TokenKindLeftBrace:
+		node, err = p.parseObject()
 	default:
 		return nil, fmtUnexpectedToken(nil, tok)
 	}
@@ -262,6 +266,38 @@ func (p *parser) parseLambda(arg Node) (n NodeFunction, err error) {
 	n.ArgName = ident.Ident
 	n.Body, err = p.parseExpression()
 	return
+}
+
+func (p *parser) parseList() (n NodeList, err error) {
+	for {
+		tok, err := p.nextAfterWhiteSpace()
+		if err != nil {
+			return n, err
+		} else if tok.Kind == tokens.TokenKindRightSquareBracket {
+			return n, nil
+		}
+
+		el, err := p.parseExpressionFromToken(tok)
+		if err != nil {
+			return n, err
+		}
+		n.Elements = append(n.Elements, el)
+
+		tok, err = p.expectToken(tokens.TokenKindRightSquareBracket, tokens.TokenKindComma)
+		if err != nil {
+			return n, err
+		} else if tok.Kind == tokens.TokenKindRightSquareBracket {
+			return n, nil
+		}
+	}
+}
+
+func (p *parser) parseObject() (NodeObject, error) {
+	b, err := p.parseBlock()
+	if err != nil {
+		return NodeObject{}, err
+	}
+	return NodeObject{Body: b.Body}, nil
 }
 
 func (p *parser) parseFunction() (Node, error) {

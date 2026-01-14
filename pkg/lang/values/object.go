@@ -1,6 +1,7 @@
 package values
 
 import (
+	"errors"
 	"reflect"
 	"unicode"
 )
@@ -27,6 +28,18 @@ func (o *Object) Put(key string, val Value) {
 
 func (o *Object) Get(key string) Value {
 	return o.m[key]
+}
+
+func (o *Object) GetString(key string) (string, error) {
+	v, ok := o.m[key]
+	if !ok {
+		return "", errors.New("expected string value called \"key\" not found")
+	}
+	str, ok := v.ToString()
+	if !ok {
+		return "", errors.New("expected string value called \"key\" is of type " + v.Kind().String())
+	}
+	return str.String(), nil
 }
 
 func ObjectFromStruct(v any) *Object {

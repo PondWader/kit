@@ -1,7 +1,14 @@
-CREATE TABLE IF NOT EXISTS core (
-    last_pulled_at DATETIME
-);
+CREATE TABLE IF NOT EXISTS pull_info (
+    id INTEGER PRIMARY KEY CHECK (id = 1),
+    last_pulled_at TEXT,
+    last_pull_list_mtime TEXT
+) STRICT;
 
 CREATE TABLE IF NOT EXISTS installations (
     id INTEGER PRIMARY KEY AUTOINCREMENT
-);
+) STRICT;
+
+CREATE TABLE IF NOT EXISTS packages (
+    name TEXT PRIMARY KEY,
+    repo TEXT NOT NULL
+) STRICT;

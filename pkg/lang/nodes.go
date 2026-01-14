@@ -103,14 +103,14 @@ type NodeBlock struct {
 func (n NodeBlock) Eval(e *Environment) (values.Value, *values.Error) {
 	child := e.NewChild()
 	if n.IsFunctionBody {
-		child.Exec = NewExec()
-		child.Exec.ReturnAllowed = true
+		child.control = NewExec()
+		child.control.ReturnAllowed = true
 	}
 	if err := child.Execute(n.Body); err != nil {
 		return values.Nil, err
 	}
 	if n.IsFunctionBody {
-		return child.Exec.ReturnVal, nil
+		return child.control.ReturnVal, nil
 	}
 	return values.Nil, nil
 }

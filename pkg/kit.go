@@ -14,12 +14,17 @@ func New() (*Kit, error) {
 		return nil, err
 	}
 
+	if err := k.loadRepos(); err != nil {
+		return nil, err
+	}
+
 	return &k, nil
 }
 
 type Kit struct {
-	Home *os.Root
-	DB   *db.DB
+	Home  *os.Root
+	DB    *db.DB
+	Repos []Repo
 }
 
 func (k *Kit) Close() error {
