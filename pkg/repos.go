@@ -129,6 +129,8 @@ func (k *Kit) PullRepos() error {
 			return errors.New("error pulling repos: repository type \"" + repo.Type + "\" is not supported (only \"git\" is supported at this time)")
 		}
 
+		repoDir := filepath.Join(k.Home.Name(), "repos", repo.Name)
+
 		// If it doesn't exist, have to clone it fresh
 		if !slices.Contains(dirs, repo.Name) {
 			cloneDir, err := os.MkdirTemp("", "kit_clone")
@@ -146,8 +148,17 @@ func (k *Kit) PullRepos() error {
 				return err
 			}
 
-			targetDir := filepath.Join(k.Home.Name(), "repos", repo.Name)
-			_ = targetDir
+			if err = os.Rename(cloneDir, repoDir); err != nil {
+				return err
+			}
+		} else {
+			_, err = pull(repoDir, &git.PullOptions{
+				SingleBranch: true,
+			}, t)
+			if errors.Is(err, git.NoErrAlreadyUpToDate) {
+				return nil
+			}
+			return err
 		}
 
 	}
@@ -189,4 +200,56 @@ func clone(path string, o *git.CloneOptions, t *render.Term) (*git.Repository, e
 	}
 
 	return git.PlainClone(path, o)
+}
+
+func pull(path string, o *git.PullOptions, t *render.Term) (*git.Repository, error) {
+	repo, err := git.PlainOpen(path)
+	if err != nil {
+		return nil, err
+	}
+	wt, err := repo.Worktree()
+	if err != nil {
+		return nil, err
+	}
+
+	if o.RemoteName == "" {
+		o.RemoteName = git.DefaultRemoteName
+	}
+	remoteURL := o.RemoteURL
+	if remoteURL == "" {
+		remote, err := repo.Remote(o.RemoteName)
+		if err != nil {
+			return nil, err
+		}
+		remoteURL = remote.Config().URLs[0]
+		o.RemoteURL = remoteURL
+	}
+
+	err = wt.Pull(o)
+	if err == nil {
+		return repo, err
+	} else if !errors.Is(err, transport.ErrAuthenticationRequired) {
+		return repo, err
+	} else if !strings.HasPrefix(remoteURL, "https://") && !strings.HasPrefix(remoteURL, "http://") {
+		return repo, err
+	}
+	pullErr := err
+
+	c := gitcli.Client{
+		Prompt: func(prompt string, secret bool) (resp string, err error) {
+			input := render.NewTextInput("Git: "+prompt, secret)
+			t.Mount(input)
+			return input.Read(), nil
+		},
+	}
+
+	cred, err := c.GetCredentials(remoteURL)
+	if err != nil {
+		return repo, pullErr
+	}
+	o.Auth = &http.BasicAuth{
+		Username: cred.Username,
+		Password: cred.Password,
+	}
+	return repo, wt.Pull(o)
 }

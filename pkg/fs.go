@@ -78,7 +78,7 @@ func (k *Kit) repoDirs() ([]string, error) {
 
 	var dirs []string
 	for _, entry := range entries {
-		if !entry.Type().IsRegular() {
+		if !entry.Type().IsDir() {
 			continue
 		}
 		dirs = append(dirs, entry.Name())

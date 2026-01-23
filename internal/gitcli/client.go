@@ -1,6 +1,7 @@
 package gitcli
 
 import (
+	"bufio"
 	"bytes"
 	"errors"
 	"fmt"
@@ -22,7 +23,7 @@ type Credential struct {
 }
 
 func (c Client) GetCredentials(url string) (cred Credential, err error) {
-	lines, err := c.runCmd(c.Prompt, fmt.Sprintf("url=%s\n\n", url), "credential", "fill")
+	lines, err := c.runCmd(fmt.Sprintf("url=%s\n\n", url), "credential", "fill")
 	if err != nil {
 		return cred, err
 	}
@@ -38,7 +39,7 @@ func (c Client) GetCredentials(url string) (cred Credential, err error) {
 	return cred, err
 }
 
-func (c Client) runCmd(prompt PromptHandler, in string, args ...string) ([]string, error) {
+func (c Client) runCmd(in string, args ...string) ([]string, error) {
 	var inputErr error
 	var stdin io.WriteCloser
 	var cmd *exec.Cmd
@@ -62,9 +63,9 @@ func (c Client) runCmd(prompt PromptHandler, in string, args ...string) ([]strin
 	}
 
 	stderr := bytes.NewBuffer(nil)
-	stdout := lineWriter{}
+	stdout := bytes.NewBuffer(nil)
 
-	cmd.Stdout = &stdout
+	cmd.Stdout = stdout
 	cmd.Stderr = stderr
 	stdin, err = cmd.StdinPipe()
 	if err != nil {
@@ -86,28 +87,10 @@ func (c Client) runCmd(prompt PromptHandler, in string, args ...string) ([]strin
 		err = inputErr
 	}
 
-	return stdout.lines, err
-}
-
-type lineWriter struct {
-	line  bytes.Buffer
-	lines []string
-}
-
-func (o *lineWriter) Write(p []byte) (int, error) {
-	var i int
-	for j, b := range p {
-		if b == '\n' {
-			o.lines = append(o.lines, o.line.String())
-			o.line.Reset()
-			i = j + 1
-		} else {
-			o.line.Write(p[i:j])
-		}
+	var lines []string
+	sc := bufio.NewScanner(stdout)
+	for sc.Scan() {
+		lines = append(lines, sc.Text())
 	}
-	if i < len(p) {
-		o.line.Write(p[i:])
-	}
-
-	return len(p), nil
+	return lines, err
 }
