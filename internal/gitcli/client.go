@@ -16,10 +16,6 @@ type Client struct {
 	Prompt PromptHandler
 }
 
-// func (c Client) Clone(url string, dest string) error {
-// 	return runCmd(c.Prompt, "", "clone", url, dest)
-// }
-
 type Credential struct {
 	Username string
 	Password string
@@ -66,7 +62,7 @@ func (c Client) runCmd(prompt PromptHandler, in string, args ...string) ([]strin
 	}
 
 	stderr := bytes.NewBuffer(nil)
-	stdout := outputHandler{prompt: prompt}
+	stdout := lineWriter{}
 
 	cmd.Stdout = &stdout
 	cmd.Stderr = stderr
@@ -93,20 +89,24 @@ func (c Client) runCmd(prompt PromptHandler, in string, args ...string) ([]strin
 	return stdout.lines, err
 }
 
-type outputHandler struct {
-	prompt PromptHandler
-	line   bytes.Buffer
-	lines  []string
+type lineWriter struct {
+	line  bytes.Buffer
+	lines []string
 }
 
-func (o *outputHandler) Write(p []byte) (int, error) {
-	for _, b := range p {
+func (o *lineWriter) Write(p []byte) (int, error) {
+	var i int
+	for j, b := range p {
 		if b == '\n' {
 			o.lines = append(o.lines, o.line.String())
 			o.line.Reset()
+			i = j + 1
 		} else {
-			o.line.WriteByte(b)
+			o.line.Write(p[i:j])
 		}
+	}
+	if i < len(p) {
+		o.line.Write(p[i:])
 	}
 
 	return len(p), nil

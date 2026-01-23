@@ -112,12 +112,12 @@ func (k *Kit) checkForAutoRepoPull() error {
 }
 
 func (k *Kit) PullRepos() error {
-	r := render.NewRenderer(os.Stdout)
-	defer r.Stop()
+	t := render.NewTerm(os.Stdin, os.Stdout)
+	defer t.Stop()
 
 	s := render.NewSpinner("Pulling repositories...")
 	defer s.Stop()
-	r.Mount(s)
+	t.Mount(s)
 
 	dirs, err := k.repoDirs()
 	if err != nil {
@@ -141,7 +141,7 @@ func (k *Kit) PullRepos() error {
 				ReferenceName: plumbing.ReferenceName(repo.Branch),
 				SingleBranch:  true,
 				Depth:         0,
-			}, r)
+			}, t)
 			if err != nil {
 				return err
 			}
@@ -155,7 +155,7 @@ func (k *Kit) PullRepos() error {
 	return nil
 }
 
-func clone(path string, o *git.CloneOptions, r *render.Renderer) (*git.Repository, error) {
+func clone(path string, o *git.CloneOptions, t *render.Term) (*git.Repository, error) {
 	repo, err := git.PlainClone(path, o)
 	if err == nil {
 		return repo, err
@@ -173,6 +173,9 @@ func clone(path string, o *git.CloneOptions, r *render.Renderer) (*git.Repositor
 	// Try again with basic auth
 	c := gitcli.Client{
 		Prompt: func(prompt string, secret bool) (resp string, err error) {
+			input := render.NewTextInput("Git: " + prompt)
+			t.Mount(input)
+			time.Sleep(time.Second * 60)
 			return "", errors.New("input prompts not supported yet")
 		},
 	}

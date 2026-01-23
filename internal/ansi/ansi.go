@@ -180,3 +180,11 @@ func Color256(colorCode int, s string) string {
 func BgColor256(colorCode int, s string) string {
 	return fmt.Sprintf("\033[48;5;%dm%s\033[0m", colorCode, s)
 }
+
+func IsMarker(r rune) bool {
+	return r == '\x1b'
+}
+
+func IsTerminator(r rune) bool {
+	return (r >= 0x40 && r <= 0x5a) || (r == 0x5e) || (r >= 0x60 && r <= 0x7e)
+}

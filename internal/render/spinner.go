@@ -58,11 +58,11 @@ func (s *Spinner) View() string {
 
 	if s.stopped {
 		if s.success {
-			return ansi.Green("✔") + " " + s.text
+			return ansi.Green("✔") + " " + s.text + "\n"
 		}
 		return ""
 	}
-	return ansi.Cyan(s.Frames[s.currentFrame]) + " " + s.text
+	return ansi.Cyan(s.Frames[s.currentFrame]) + " " + s.text + "\n"
 }
 
 func (s *Spinner) Stop() {

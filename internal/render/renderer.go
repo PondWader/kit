@@ -6,6 +6,7 @@ import (
 	"strings"
 	"unicode/utf8"
 
+	"github.com/PondWader/kit/internal/ansi"
 	"golang.org/x/term"
 )
 
@@ -16,27 +17,24 @@ type ComponentUpdate struct {
 }
 
 type Component interface {
-	SetUpdateChan(chan ComponentUpdate)
+	Bind(chan ComponentUpdate, *MountedComponent)
 	View() string
 }
 
-type MountedComponent struct {
-	Text      string
-	Component Component
-}
+type Term struct {
+	Out *os.File
+	In  *os.File
 
-type Renderer struct {
-	Out        *os.File
 	components []*MountedComponent
 	updateChan chan chan struct{}
 
 	lastLineCount int
 }
 
-func NewRenderer(out *os.File) *Renderer {
+func NewTerm(in, out *os.File) *Term {
 	ch := make(chan chan struct{}, 1)
 
-	r := &Renderer{
+	t := &Term{
 		Out:        out,
 		components: make([]*MountedComponent, 0),
 		updateChan: ch,
@@ -44,21 +42,23 @@ func NewRenderer(out *os.File) *Renderer {
 
 	go func() {
 		for cb := range ch {
-			r.render()
+			t.render()
 			if cb != nil {
 				cb <- struct{}{}
 			}
 		}
 	}()
 
-	return r
+	go t.inputReader(in)
+
+	return t
 }
 
-func (r *Renderer) Println(v ...any) {
+func (r *Term) Println(v ...any) {
 	r.Mount(staticComponent{fmt.Sprint(v...)})
 }
 
-func (r *Renderer) Update() {
+func (r *Term) Update() {
 	// If there is already a pending update, no need to send twice
 	select {
 	case r.updateChan <- nil:
@@ -66,14 +66,15 @@ func (r *Renderer) Update() {
 	}
 }
 
-func (r *Renderer) UpdateAndWait() {
+func (r *Term) UpdateAndWait() {
 	cb := make(chan struct{})
 	r.updateChan <- cb
 	<-cb
 }
 
-func (r *Renderer) render() {
+func (r *Term) render() {
 	var sb strings.Builder
+	// Clear lines
 	for range r.lastLineCount - 1 {
 		sb.WriteString("\u001B[1A\r\x1b[K")
 	}
@@ -84,7 +85,7 @@ func (r *Renderer) render() {
 			sb.WriteRune('\r')
 			continue
 		}
-		fmt.Fprintln(&sb, c.Text)
+		fmt.Fprint(&sb, c.Text)
 	}
 	str := sb.String()
 
@@ -100,16 +101,32 @@ func (r *Renderer) render() {
 	os.Stdout.WriteString(str)
 }
 
-func (r *Renderer) Mount(c Component) {
-	ch := make(chan ComponentUpdate)
-	c.SetUpdateChan(ch)
+func (t *Term) inputReader(in *os.File) {
+	var b [1024]byte
+	for {
+		n, err := in.Read(b[:])
+		if err != nil {
+			return
+		}
 
+		rcv := t.components[len(t.components)-1]
+		if rcv.input != nil {
+			rcv.input <- string(b[:n])
+		}
+	}
+}
+
+func (t *Term) Mount(c Component) {
 	mc := &MountedComponent{
-		Text:      c.View(),
 		Component: c,
 	}
-	r.components = append(r.components, mc)
-	r.Update()
+	t.components = append(t.components, mc)
+
+	ch := make(chan ComponentUpdate)
+	c.Bind(ch, mc)
+
+	mc.Text = c.View()
+	t.Update()
 
 	go func() {
 		for update := range ch {
@@ -118,35 +135,27 @@ func (r *Renderer) Mount(c Component) {
 				continue
 			}
 			if update.Wait {
-				r.UpdateAndWait()
+				t.UpdateAndWait()
 			} else {
-				r.Update()
+				t.Update()
 			}
 		}
 	}()
 }
 
-func (r *Renderer) Stop() {
-	close(r.updateChan)
-}
-
-func isAnsiMarker(r rune) bool {
-	return r == '\x1b'
-}
-
-func isAnsiTerminator(r rune) bool {
-	return (r >= 0x40 && r <= 0x5a) || (r == 0x5e) || (r >= 0x60 && r <= 0x7e)
+func (t *Term) Stop() {
+	close(t.updateChan)
 }
 
 func lineWidth(line string) int {
 	width := 0
-	ansi := false
+	inAnsi := false
 
-	for _, r := range line {
-		if ansi || isAnsiMarker(r) {
-			ansi = !isAnsiTerminator(r)
+	for _, c := range line {
+		if inAnsi || ansi.IsMarker(c) {
+			inAnsi = !ansi.IsTerminator(c)
 		} else {
-			width += utf8.RuneLen(r)
+			width += utf8.RuneLen(c)
 		}
 	}
 
@@ -154,17 +163,17 @@ func lineWidth(line string) int {
 }
 
 func countLines(line string, width int) int {
-	lineCount := 0
+	count := 0
 	for line := range strings.SplitSeq(line, "\n") {
-		lineCount++
+		count++
 
 		lineWidth := lineWidth(line)
 		if lineWidth > width {
-			lineCount += int(float64(lineWidth) / float64(width))
+			count += int(float64(lineWidth) / float64(width))
 		}
 	}
 
-	return lineCount
+	return count
 }
 
 type staticComponent struct {
@@ -172,7 +181,7 @@ type staticComponent struct {
 }
 
 // SetUpdateChan implements [Component].
-func (s staticComponent) SetUpdateChan(c chan ComponentUpdate) {
+func (s staticComponent) Bind(c chan ComponentUpdate, _ *MountedComponent) {
 	close(c)
 }
 
@@ -182,3 +191,15 @@ func (s staticComponent) View() string {
 }
 
 var _ Component = (*staticComponent)(nil)
+
+type MountedComponent struct {
+	Text      string
+	Component Component
+	input     chan<- string
+}
+
+func (mc *MountedComponent) Input() <-chan string {
+	rcv := make(chan string)
+	mc.input = rcv
+	return rcv
+}

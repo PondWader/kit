@@ -8,6 +8,7 @@ type ComponentBase struct {
 	v          Viewable
 	updateChan chan ComponentUpdate
 	onMount    []func()
+	mount      *MountedComponent
 }
 
 func NewComponentBase(v Viewable) ComponentBase {
@@ -18,9 +19,10 @@ func (b *ComponentBase) OnMount(f func()) {
 	b.onMount = append(b.onMount, f)
 }
 
-// SetUpdateChan implements [Component].
-func (b *ComponentBase) SetUpdateChan(c chan ComponentUpdate) {
+// Bind implements [Component].
+func (b *ComponentBase) Bind(c chan ComponentUpdate, mount *MountedComponent) {
 	b.updateChan = c
+	b.mount = mount
 
 	for _, f := range b.onMount {
 		f()
@@ -42,4 +44,8 @@ func (b *ComponentBase) RenderWait() {
 func (b *ComponentBase) End() {
 	b.RenderWait()
 	close(b.updateChan)
+}
+
+func (b *ComponentBase) Input() <-chan string {
+	return b.mount.Input()
 }
