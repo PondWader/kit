@@ -173,10 +173,9 @@ func clone(path string, o *git.CloneOptions, t *render.Term) (*git.Repository, e
 	// Try again with basic auth
 	c := gitcli.Client{
 		Prompt: func(prompt string, secret bool) (resp string, err error) {
-			input := render.NewTextInput("Git: " + prompt)
+			input := render.NewTextInput("Git: "+prompt, secret)
 			t.Mount(input)
-			time.Sleep(time.Second * 60)
-			return "", errors.New("input prompts not supported yet")
+			return input.Read(), nil
 		},
 	}
 

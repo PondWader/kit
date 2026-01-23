@@ -128,9 +128,16 @@ func (t *Term) inputReader(in *os.File) {
 		}
 
 		rcv := t.components[len(t.components)-1]
-		if rcv.input != nil {
-			rcv.input <- string(b[:n])
+		if rcv.input == nil {
+			continue
 		}
+
+		str := string(b[:n])
+		// Go up a line to cancel out new line
+		if str[len(str)-1] == '\n' {
+			t.Out.WriteString("\u001B[1A")
+		}
+		rcv.input <- str
 	}
 }
 
