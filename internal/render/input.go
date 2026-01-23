@@ -16,6 +16,7 @@ type TextInput struct {
 	readC    chan string
 	complete bool
 	oldState *term.State
+	secret   bool
 }
 
 var _ Component = (*TextInput)(nil)
@@ -24,6 +25,7 @@ func NewTextInput(prompt string, secret bool) (i *TextInput) {
 	i = &TextInput{
 		prompt: prompt,
 		readC:  make(chan string),
+		secret: secret,
 	}
 	i.ComponentBase = NewComponentBase(i)
 	i.OnMount(func() {
@@ -40,9 +42,14 @@ func (i *TextInput) inputHandler() {
 	for in := range i.Input() {
 		if in[len(in)-1] == '\n' {
 			i.input.WriteString(in[:len(in)-1])
+
+			// End the component
 			i.complete = true
 			if i.oldState != nil {
 				term.Restore(int(os.Stdin.Fd()), i.oldState)
+				// When echo was disabled, pressing Enter didn't print a newline
+				// Print one now to move to the next line
+				os.Stdout.WriteString("\n")
 			}
 			i.End()
 			i.readC <- i.input.String()
@@ -61,6 +68,9 @@ func (i *TextInput) Read() string {
 func (i *TextInput) View() string {
 	if i.complete {
 		return ""
+	}
+	if i.secret {
+		return i.prompt
 	}
 	return i.prompt + i.input.String()
 }

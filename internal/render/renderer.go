@@ -79,7 +79,7 @@ func (r *Term) render() {
 	var hasInput bool
 	if len(r.components) > 0 {
 		last := r.components[len(r.components)-1]
-		if last.input != nil && last.displayed {
+		if last.input != nil && last.displayed && last.Text != "" {
 			sb.WriteString("\u001B7")
 			hasInput = true
 		}
@@ -93,7 +93,7 @@ func (r *Term) render() {
 
 	for _, c := range r.components {
 		if c.Text == "" {
-			sb.WriteRune('\r')
+			sb.WriteString("\x1b[K")
 			continue
 		}
 		fmt.Fprint(&sb, c.Text)
