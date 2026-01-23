@@ -74,6 +74,17 @@ func (r *Term) UpdateAndWait() {
 
 func (r *Term) render() {
 	var sb strings.Builder
+
+	// Save cursor position if last component is receiving input
+	var hasInput bool
+	if len(r.components) > 0 {
+		last := r.components[len(r.components)-1]
+		if last.input != nil && last.displayed {
+			sb.WriteString("\u001B7")
+			hasInput = true
+		}
+	}
+
 	// Clear lines
 	for range r.lastLineCount - 1 {
 		sb.WriteString("\u001B[1A\r\x1b[K")
@@ -86,7 +97,14 @@ func (r *Term) render() {
 			continue
 		}
 		fmt.Fprint(&sb, c.Text)
+		c.displayed = true
 	}
+
+	// Restore cursor position
+	if hasInput {
+		sb.WriteString("\u001B8")
+	}
+
 	str := sb.String()
 
 	terminalWidth := 80
@@ -196,6 +214,7 @@ type MountedComponent struct {
 	Text      string
 	Component Component
 	input     chan<- string
+	displayed bool
 }
 
 func (mc *MountedComponent) Input() <-chan string {
