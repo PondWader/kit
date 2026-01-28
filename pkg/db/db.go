@@ -68,3 +68,34 @@ func (db *DB) UpdateCoreInfo(i CoreInfo) error {
 		i.LastPulledAt.Format(time.RFC3339), i.LastPullRepoMtime.Format(time.RFC3339))
 	return err
 }
+
+func (db *DB) BeginPackageIndex(repo string) (*PackageIndex, error) {
+	tx, err := db.sql.Begin()
+	if err != nil {
+		return nil, err
+	}
+
+	if _, err = tx.Exec("DELETE FROM packages WHERE repo = ?;", repo); err != nil {
+		return nil, err
+	}
+
+	return &PackageIndex{tx, repo}, nil
+}
+
+type PackageIndex struct {
+	tx   *sql.Tx
+	repo string
+}
+
+func (i *PackageIndex) Rollback() error {
+	return i.tx.Rollback()
+}
+
+func (i *PackageIndex) Commit() error {
+	return i.tx.Commit()
+}
+
+func (i *PackageIndex) IndexPackage(name, path string) error {
+	_, err := i.tx.Exec("INSERT INTO packages VALUES (?, ?, ?);", name, i.repo, path)
+	return err
+}

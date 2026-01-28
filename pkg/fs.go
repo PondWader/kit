@@ -70,8 +70,7 @@ func (k *Kit) setupHome() error {
 }
 
 func (k *Kit) repoDirs() ([]string, error) {
-	fs := k.Home.FS().(fs.ReadDirFS)
-	entries, err := fs.ReadDir("repos")
+	entries, err := k.Home.ReadDir("repos")
 	if err != nil {
 		return nil, err
 	}
@@ -126,6 +125,11 @@ func resolveDataHome() (string, error) {
 
 type KitFS struct{ *os.Root }
 
-func (fs KitFS) TempDir() string {
-	return filepath.Join(fs.Name(), "tmp")
+func (kfs KitFS) TempDir() string {
+	return filepath.Join(kfs.Name(), "tmp")
+}
+
+func (kfs KitFS) ReadDir(name string) ([]os.DirEntry, error) {
+	root := kfs.FS().(fs.ReadDirFS)
+	return root.ReadDir(name)
 }

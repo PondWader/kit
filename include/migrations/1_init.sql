@@ -9,6 +9,9 @@ CREATE TABLE IF NOT EXISTS installations (
 ) STRICT;
 
 CREATE TABLE IF NOT EXISTS packages (
-    name TEXT PRIMARY KEY,
-    repo TEXT NOT NULL
+    name TEXT NOT NULL,
+    repo TEXT NOT NULL,
+    path TEXT NOT NULL,
+    PRIMARY KEY (name, repo)
 ) STRICT;
+CREATE INDEX idx_packages_name ON packages (name);

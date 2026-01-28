@@ -27,6 +27,47 @@ type Repo struct {
 	Dir    string
 }
 
+func (r *Repo) index(k *Kit) error {
+	repoPkgPath := filepath.Join("repos", r.Name, r.Dir)
+	entries, err := k.Home.ReadDir(repoPkgPath)
+	if err != nil {
+		return err
+	}
+
+	idx, err := k.DB.BeginPackageIndex(r.Name)
+	if err != nil {
+		return err
+	}
+	defer idx.Rollback()
+
+	for _, entry := range entries {
+		pkgPath := filepath.Join(repoPkgPath, entry.Name())
+		f, err := k.Home.Open(filepath.Join(pkgPath, "package.kit"))
+		if err != nil {
+			return err
+		}
+		defer f.Close()
+
+		env, err := lang.Execute(f)
+		if err != nil {
+			return err
+		}
+
+		nameV, err := env.GetExport("name")
+		if err != nil {
+			return fmt.Errorf("error loading %s: %w", pkgPath, err)
+		}
+		nameStr, ok := nameV.ToString()
+		if !ok {
+			return fmt.Errorf("error loading %s: expected \"name\" export to be a string", pkgPath)
+		}
+
+		idx.IndexPackage(nameStr.String(), pkgPath)
+	}
+
+	return idx.Commit()
+}
+
 func (k *Kit) loadRepos() error {
 	reposFile, err := k.Home.Open("repositories.kit")
 	if err != nil {
@@ -139,6 +180,8 @@ func (k *Kit) PullRepos() error {
 
 		repoDir := filepath.Join(k.Home.Name(), "repos", repo.Name)
 
+		doIndex := true
+
 		// If it doesn't exist, have to clone it fresh
 		if !slices.Contains(dirs, repo.Name) {
 			cloneDir, err := os.MkdirTemp(k.Home.TempDir(), "kit_clone")
@@ -163,10 +206,18 @@ func (k *Kit) PullRepos() error {
 			_, err = pull(repoDir, &git.PullOptions{
 				SingleBranch: true,
 			}, t)
+
 			if errors.Is(err, git.NoErrAlreadyUpToDate) {
-				return nil
+				doIndex = false
+			} else if err != nil {
+				return err
 			}
-			return err
+		}
+
+		if doIndex {
+			if err = repo.index(k); err != nil {
+				return err
+			}
 		}
 	}
 
