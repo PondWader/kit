@@ -25,7 +25,7 @@ func (k *Kit) setupHome() error {
 	if err != nil {
 		return err
 	}
-	k.Home = root
+	k.Home = KitFS{root}
 
 	entries, err := os.ReadDir(root.Name())
 	if err != nil {
@@ -33,7 +33,7 @@ func (k *Kit) setupHome() error {
 	}
 
 	// Make all the missing directories
-	dirs := [4]string{"bin", "lib", "repos", "packages"}
+	dirs := [5]string{"bin", "lib", "repos", "packages", "tmp"}
 	for _, dir := range dirs {
 		if !slices.ContainsFunc(entries, func(e os.DirEntry) bool {
 			return e.Name() == dir
@@ -122,4 +122,10 @@ func resolveDataHome() (string, error) {
 		}
 		return filepath.Join(home, "./.local/share"), nil
 	}
+}
+
+type KitFS struct{ *os.Root }
+
+func (fs KitFS) TempDir() string {
+	return filepath.Join(fs.Name(), "tmp")
 }

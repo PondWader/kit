@@ -133,7 +133,7 @@ func (k *Kit) PullRepos() error {
 
 		// If it doesn't exist, have to clone it fresh
 		if !slices.Contains(dirs, repo.Name) {
-			cloneDir, err := os.MkdirTemp("", "kit_clone")
+			cloneDir, err := os.MkdirTemp(k.Home.TempDir(), "kit_clone")
 			if err != nil {
 				return fmt.Errorf("error pulling repos: %w", err)
 			}

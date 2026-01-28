@@ -1,8 +1,6 @@
 package kit
 
 import (
-	"os"
-
 	"github.com/PondWader/kit/pkg/db"
 )
 
@@ -22,7 +20,7 @@ func New() (*Kit, error) {
 }
 
 type Kit struct {
-	Home  *os.Root
+	Home  KitFS
 	DB    *db.DB
 	Repos []Repo
 }
