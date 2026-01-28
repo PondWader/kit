@@ -104,11 +104,19 @@ func (k *Kit) checkForAutoRepoPull() error {
 	}
 
 	// If the file has not changed or the last pull was less than 24 hours a day, don't do an auto pull
-	if finfo.ModTime().Equal(info.LastPullRepoMtime) && time.Since(info.LastPulledAt) < time.Hour*24 {
+	if finfo.ModTime().Truncate(time.Second).Equal(info.LastPullRepoMtime) && time.Since(info.LastPulledAt) < time.Hour*24 {
 		return nil
 	}
 
-	return k.PullRepos()
+	if err := k.PullRepos(); err != nil {
+		return err
+	}
+
+	k.DB.UpdateCoreInfo(db.CoreInfo{
+		LastPulledAt:      time.Now(),
+		LastPullRepoMtime: finfo.ModTime(),
+	})
+	return nil
 }
 
 func (k *Kit) PullRepos() error {
@@ -160,7 +168,6 @@ func (k *Kit) PullRepos() error {
 			}
 			return err
 		}
-
 	}
 
 	return nil

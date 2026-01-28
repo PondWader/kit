@@ -40,16 +40,23 @@ type CoreInfo struct {
 }
 
 func (db *DB) GetCoreInfo() (CoreInfo, error) {
-	var i CoreInfo
 	var id int
+	var i CoreInfo
+
+	var lastPulledAtRaw string
+	var lastPullRepoMtimeRaw string
 
 	row := db.sql.QueryRow("SELECT * FROM pull_info;")
-	err := row.Scan(&id, &i.LastPulledAt, &i.LastPullRepoMtime)
+	err := row.Scan(&id, &lastPulledAtRaw, &lastPullRepoMtimeRaw)
 	if err == sql.ErrNoRows {
 		return i, ErrNoData
 	}
 
-	return i, err
+	if i.LastPulledAt, err = time.Parse(time.RFC3339, lastPulledAtRaw); err != nil {
+		return i, err
+	}
+	i.LastPullRepoMtime, err = time.Parse(time.RFC3339, lastPullRepoMtimeRaw)
+	return i, nil
 }
 
 func (db *DB) UpdateCoreInfo(i CoreInfo) error {
@@ -58,6 +65,6 @@ func (db *DB) UpdateCoreInfo(i CoreInfo) error {
 		ON CONFLICT(id) DO UPDATE SET
 			last_pulled_at = excluded.last_pulled_at,
 			last_pull_list_mtime = excluded.last_pull_list_mtime;`,
-		i.LastPulledAt, i.LastPullRepoMtime)
+		i.LastPulledAt.Format(time.RFC3339), i.LastPullRepoMtime.Format(time.RFC3339))
 	return err
 }
