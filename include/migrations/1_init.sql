@@ -14,4 +14,4 @@ CREATE TABLE IF NOT EXISTS packages (
     path TEXT NOT NULL,
     PRIMARY KEY (name, repo)
 ) STRICT;
-CREATE INDEX idx_packages_name ON packages (name);
+CREATE INDEX IF NOT EXISTS idx_packages_name ON packages (name);

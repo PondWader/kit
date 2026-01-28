@@ -2,6 +2,7 @@ package db
 
 import (
 	"slices"
+	"time"
 
 	"github.com/PondWader/kit/include"
 )
@@ -48,6 +49,8 @@ func (db *DB) applyMigrations() (err error) {
 			if _, err = tx.Exec(string(migration)); err != nil {
 				return err
 			}
+
+			tx.Exec("INSERT INTO migrations VALUES (?, ?);", entry.Name(), time.Now().Format(time.RFC3339))
 		}
 	}
 

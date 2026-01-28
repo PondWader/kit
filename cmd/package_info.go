@@ -1,9 +1,11 @@
 package main
 
 import (
+	"errors"
 	"flag"
 	"fmt"
 	"os"
+	"strings"
 	"time"
 
 	kit "github.com/PondWader/kit/pkg"
@@ -23,8 +25,29 @@ var VersionsCommand = Command{
 			os.Exit(1)
 		}
 
-		_ = k
-		_ = pkgName
+		pkg := getPkg(k, pkgName)
+
+		versions, err := pkg.Versions()
+		if err != nil {
+			printError(err)
+			os.Exit(1)
+		}
+
+		fmt.Println(strings.Join(versions, "\n"))
+
 		fmt.Println("completed in", time.Since(start))
 	},
+}
+
+func getPkg(k *kit.Kit, name string) *kit.Package {
+	pkgs, err := k.LoadPackage(name)
+	if err != nil {
+		printError(err)
+		os.Exit(1)
+	} else if len(pkgs) == 0 {
+		printError(errors.New("no packages found matching name"))
+		os.Exit(1)
+	}
+	// TODO: Ask user to select a package if there are multiple
+	return pkgs[0]
 }

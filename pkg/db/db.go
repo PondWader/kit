@@ -82,6 +82,29 @@ func (db *DB) BeginPackageIndex(repo string) (*PackageIndex, error) {
 	return &PackageIndex{tx, repo}, nil
 }
 
+type PackageInfo struct {
+	Name string
+	Repo string
+	Path string
+}
+
+func (db *DB) GetPackages(name string) ([]PackageInfo, error) {
+	rows, err := db.sql.Query("SELECT name, repo, path FROM packages WHERE name = ?", name)
+	if err != nil {
+		return nil, err
+	}
+
+	var pkgs []PackageInfo
+	for rows.Next() {
+		var pkg PackageInfo
+		if err = rows.Scan(&pkg.Name, &pkg.Repo, &pkg.Path); err != nil {
+			return nil, err
+		}
+		pkgs = append(pkgs, pkg)
+	}
+	return pkgs, nil
+}
+
 type PackageIndex struct {
 	tx   *sql.Tx
 	repo string
