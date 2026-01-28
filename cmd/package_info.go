@@ -19,7 +19,7 @@ var VersionsCommand = Command{
 	Run: func(fs *flag.FlagSet) {
 		start := time.Now()
 		pkgName := fs.Arg(0)
-		k, err := kit.New()
+		k, err := kit.New(true)
 		if err != nil {
 			printError(err)
 			os.Exit(1)

@@ -134,6 +134,10 @@ func (k *Kit) loadRepos() error {
 }
 
 func (k *Kit) checkForAutoRepoPull() error {
+	if !k.autoPull {
+		return nil
+	}
+
 	info, err := k.DB.GetCoreInfo()
 	if err != nil && err != db.ErrNoData {
 		return err

@@ -28,6 +28,7 @@ var Commands = []Command{
 	HelpCommand,
 	VersionCommand,
 	VersionsCommand,
+	PullCommand,
 }
 
 func main() {
