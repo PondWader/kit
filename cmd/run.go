@@ -8,6 +8,7 @@ import (
 	"os"
 	"slices"
 	"strings"
+	"time"
 
 	"github.com/PondWader/kit/internal/ansi"
 )
@@ -22,6 +23,7 @@ type Command struct {
 	Run              func(fs *flag.FlagSet)
 	Aliases          []string
 	Hidden           bool
+	TaskRunner       bool
 }
 
 var Commands = []Command{
@@ -74,9 +76,13 @@ func main() {
 				os.Exit(1)
 			}
 
+			start := time.Now()
 			cmd.Run(
 				flags,
 			)
+			if cmd.TaskRunner {
+				fmt.Println(ansi.BrightBlack("🪁 Completed in"), ansi.Cyan(time.Since(start).Round(time.Millisecond).String()))
+			}
 			return
 		}
 	}

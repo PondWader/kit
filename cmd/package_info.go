@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"os"
 	"strings"
-	"time"
 
 	"github.com/PondWader/kit/internal/render"
 	kit "github.com/PondWader/kit/pkg"
@@ -21,7 +20,6 @@ var VersionsCommand = Command{
 		t := render.NewTerm(os.Stdin, os.Stdout)
 		defer t.Stop()
 
-		start := time.Now()
 		pkgName := fs.Arg(0)
 		k, err := kit.New(true, t)
 		if err != nil {
@@ -44,9 +42,8 @@ var VersionsCommand = Command{
 		s.Stop()
 
 		fmt.Println(strings.Join(versions, "\n"))
-
-		fmt.Println("completed in", time.Since(start))
 	},
+	TaskRunner: true,
 }
 
 var InstallCommand = Command{
@@ -70,6 +67,7 @@ var InstallCommand = Command{
 		_ = k
 		_ = pkgName
 	},
+	TaskRunner: true,
 }
 
 func getPkg(k *kit.Kit, name string) *kit.Package {
