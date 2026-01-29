@@ -62,8 +62,8 @@ first_per = pets[0] # Lists are 0 indexed
 Lists can be mutated:
 
 ```
-pets.push_end(pet)
-pets.push_start(pet)
+pets.append(pet)
+pets.prepend(pet)
 pets.remove_first()
 pets.remove_last()
 pets.remove_at(3)

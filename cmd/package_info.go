@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/PondWader/kit/internal/render"
 	kit "github.com/PondWader/kit/pkg"
 )
 
@@ -17,9 +18,12 @@ var VersionsCommand = Command{
 	Description:      "lists all versions available for a package",
 	RequiredArgCount: 1,
 	Run: func(fs *flag.FlagSet) {
+		t := render.NewTerm(os.Stdin, os.Stdout)
+		defer t.Stop()
+
 		start := time.Now()
 		pkgName := fs.Arg(0)
-		k, err := kit.New(true)
+		k, err := kit.New(true, t)
 		if err != nil {
 			printError(err)
 			os.Exit(1)
@@ -27,15 +31,44 @@ var VersionsCommand = Command{
 
 		pkg := getPkg(k, pkgName)
 
+		s := render.NewSpinner("Fetching versions...")
+		t.Mount(s)
+
 		versions, err := pkg.Versions()
+		if err != nil {
+			s.Stop()
+			printError(err)
+			os.Exit(1)
+		}
+
+		s.Stop()
+
+		fmt.Println(strings.Join(versions, "\n"))
+
+		fmt.Println("completed in", time.Since(start))
+	},
+}
+
+var InstallCommand = Command{
+	Aliases:          []string{"get"},
+	Name:             "install",
+	Usage:            "<package> [version]",
+	Description:      "install a package",
+	RequiredArgCount: 1,
+	OptionalArgCount: 2,
+	Run: func(fs *flag.FlagSet) {
+		t := render.NewTerm(os.Stdin, os.Stdout)
+		defer t.Stop()
+
+		pkgName := fs.Arg(0)
+		k, err := kit.New(true, t)
 		if err != nil {
 			printError(err)
 			os.Exit(1)
 		}
 
-		fmt.Println(strings.Join(versions, "\n"))
-
-		fmt.Println("completed in", time.Since(start))
+		_ = k
+		_ = pkgName
 	},
 }
 

@@ -1,13 +1,14 @@
 package kit
 
 import (
+	"github.com/PondWader/kit/internal/render"
 	"github.com/PondWader/kit/pkg/db"
 )
 
 const Version = "0.0.1"
 
-func New(autoPull bool) (*Kit, error) {
-	k := Kit{autoPull: autoPull}
+func New(autoPull bool, t *render.Term) (*Kit, error) {
+	k := Kit{autoPull: autoPull, t: t}
 	if err := k.setupHome(); err != nil {
 		return nil, err
 	}
@@ -24,6 +25,7 @@ type Kit struct {
 	DB       *db.DB
 	Repos    []Repo
 	autoPull bool
+	t        *render.Term
 }
 
 func (k *Kit) Close() error {

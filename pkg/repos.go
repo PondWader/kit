@@ -165,12 +165,9 @@ func (k *Kit) checkForAutoRepoPull() error {
 }
 
 func (k *Kit) PullRepos() error {
-	t := render.NewTerm(os.Stdin, os.Stdout)
-	defer t.Stop()
-
 	s := render.NewSpinner("Pulling repositories...")
 	defer s.Stop()
-	t.Mount(s)
+	k.t.Mount(s)
 
 	dirs, err := k.repoDirs()
 	if err != nil {
@@ -198,7 +195,7 @@ func (k *Kit) PullRepos() error {
 				ReferenceName: plumbing.ReferenceName(repo.Branch),
 				SingleBranch:  true,
 				Depth:         0,
-			}, t)
+			}, k.t)
 			if err != nil {
 				return err
 			}
@@ -209,7 +206,7 @@ func (k *Kit) PullRepos() error {
 		} else {
 			_, err = pull(repoDir, &git.PullOptions{
 				SingleBranch: true,
-			}, t)
+			}, k.t)
 
 			if errors.Is(err, git.NoErrAlreadyUpToDate) {
 				doIndex = false
