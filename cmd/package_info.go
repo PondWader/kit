@@ -5,8 +5,11 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"slices"
 	"strings"
+	"time"
 
+	"github.com/PondWader/kit/internal/ansi"
 	"github.com/PondWader/kit/internal/render"
 	kit "github.com/PondWader/kit/pkg"
 )
@@ -64,8 +67,39 @@ var InstallCommand = Command{
 			os.Exit(1)
 		}
 
-		_ = k
-		_ = pkgName
+		versionSpec := "latest"
+		if fs.NArg() > 1 {
+			versionSpec = fs.Arg(1)
+		}
+
+		pkg := getPkg(k, pkgName)
+
+		s := render.NewSpinner(fmt.Sprintf("Installing %s@%s...", ansi.Cyan(pkgName), ansi.Cyan(versionSpec)))
+		t.Mount(s)
+
+		time.Sleep(time.Second * 2)
+		versions, err := pkg.Versions()
+		if err != nil {
+			s.Stop()
+			printError(err)
+			os.Exit(1)
+		}
+
+		var version string
+		if versionSpec == "latest" {
+			version = pickLatestVersion(versions)
+		} else if !slices.Contains(versions, versionSpec) {
+			var ok bool
+			version, ok = matchVersion(versionSpec, versions)
+			if !ok {
+				printError(errors.New("could not match version: " + versionSpec))
+				os.Exit(1)
+			}
+		}
+
+		_ = versions
+
+		s.Succeed(fmt.Sprintf("Installed %s@%s", ansi.Cyan(pkgName), ansi.Cyan(version)))
 	},
 	TaskRunner: true,
 }
@@ -81,4 +115,41 @@ func getPkg(k *kit.Kit, name string) *kit.Package {
 	}
 	// TODO: Ask user to select a package if there are multiple
 	return pkgs[0]
+}
+
+func pickLatestVersion(versions []string) string {
+	for i := len(versions) - 1; i >= 0; i-- {
+		// Pick last version without letters in it (e.g. skip 1.26rc2) if possible
+		if !hasLetters(versions[i]) {
+			return versions[i]
+		}
+	}
+	return versions[len(versions)-1]
+}
+
+func matchVersion(versionSpec string, versions []string) (string, bool) {
+	for i := len(versions) - 1; i >= 0; i-- {
+		version := versions[i]
+		// Exact match
+		if version == versionSpec {
+			return version, true
+		}
+		// Prefix match (e.g., "1.26" matches "1.26.8")
+		if strings.HasPrefix(version, versionSpec+".") {
+			// Skip versions with letters (e.g., "1.26rc2")
+			if !hasLetters(version) {
+				return version, true
+			}
+		}
+	}
+	return "", false
+}
+
+func hasLetters(str string) bool {
+	for _, c := range str {
+		if (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') {
+			return true
+		}
+	}
+	return false
 }

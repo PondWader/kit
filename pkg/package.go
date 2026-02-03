@@ -81,13 +81,15 @@ func (p *Package) Versions() ([]string, error) {
 	return versions, nil
 }
 
+func (p *Package) Install(version string) {}
+
 func compareVersions(a, b string) int {
 	partsA := strings.Split(a, ".")
 	partsB := strings.Split(b, ".")
 
 	maxLen := max(len(partsB), len(partsA))
 
-	for i := 0; i < maxLen; i++ {
+	for i := range maxLen {
 		var partA, partB string
 		if i < len(partsA) {
 			partA = partsA[i]
