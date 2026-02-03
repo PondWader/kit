@@ -74,7 +74,7 @@ var InstallCommand = Command{
 
 		pkg := getPkg(k, pkgName)
 
-		s := render.NewSpinner(fmt.Sprintf("Installing %s@%s...", ansi.Cyan(pkgName), ansi.Cyan(versionSpec)))
+		s := render.NewSpinner(fmt.Sprintf("Installing %s"+ansi.BrightBlue("@")+"%s...", ansi.Cyan(pkgName), ansi.Cyan(versionSpec)))
 		t.Mount(s)
 
 		time.Sleep(time.Second * 2)
@@ -97,9 +97,13 @@ var InstallCommand = Command{
 			}
 		}
 
-		_ = versions
+		if err = pkg.Install(version); err != nil {
+			s.Stop()
+			printError(err)
+			os.Exit(1)
+		}
 
-		s.Succeed(fmt.Sprintf("Installed %s@%s", ansi.Cyan(pkgName), ansi.Cyan(version)))
+		s.Succeed(fmt.Sprintf("Installed %s"+ansi.BrightBlue("@")+"%s", ansi.Cyan(pkgName), ansi.Cyan(version)))
 	},
 	TaskRunner: true,
 }

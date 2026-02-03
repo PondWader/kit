@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/PondWader/kit/pkg/lang"
+	"github.com/PondWader/kit/pkg/lang/values"
 )
 
 type Package struct {
@@ -81,7 +82,30 @@ func (p *Package) Versions() ([]string, error) {
 	return versions, nil
 }
 
-func (p *Package) Install(version string) {}
+func (p *Package) Install(version string) error {
+	env, err := p.loadEnv()
+	if err != nil {
+		return err
+	}
+
+	installV, err := env.GetExport("install")
+	if err != nil {
+		return err
+	}
+	installFn, ok := installV.ToFunction()
+	if !ok {
+		return fmt.Errorf("error running install in %s: expected install export to be a function", filepath.Join(p.Path, "package.kit"))
+	}
+
+	sb := &installBinding{}
+	sb.Load(env)
+
+	_, cErr := installFn.Call(values.String(version).Val())
+	if cErr != nil {
+		return cErr
+	}
+	return nil
+}
 
 func compareVersions(a, b string) int {
 	partsA := strings.Split(a, ".")
