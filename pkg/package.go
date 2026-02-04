@@ -53,7 +53,7 @@ func (p *Package) Versions() ([]string, error) {
 
 	returned, cErr := versionsFn.Call()
 	if cErr != nil {
-		return nil, cErr
+		return nil, fmt.Errorf("error getting versions from %s: %w", filepath.Join(p.Path, "package.kit"), cErr)
 	}
 	versionsList, ok := returned.ToList()
 	if !ok {
@@ -102,7 +102,7 @@ func (p *Package) Install(version string) error {
 
 	_, cErr := installFn.Call(values.String(version).Val())
 	if cErr != nil {
-		return cErr
+		return fmt.Errorf("error running install in %s: %w", filepath.Join(p.Path, "package.kit"), cErr)
 	}
 	return nil
 }

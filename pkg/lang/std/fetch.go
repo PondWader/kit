@@ -54,3 +54,7 @@ func (f PendingFetch) Text() (values.Value, error) {
 
 	return values.Of(string(body)), nil
 }
+
+func (f PendingFetch) Read(p []byte) (n int, err error) {
+	return f.req.Body.Read(p)
+}

@@ -49,7 +49,7 @@ func ObjectFromStruct(v any) *Object {
 	val := reflect.ValueOf(v)
 
 	// Handle pointer to struct
-	if val.Kind() == reflect.Ptr {
+	if val.Kind() == reflect.Pointer {
 		val = val.Elem()
 	}
 
@@ -76,8 +76,13 @@ func ObjectFromStruct(v any) *Object {
 			fieldName = string(unicode.ToLower(rune(fieldName[0]))) + fieldName[1:]
 		}
 
-		// Convert field value to Value and add to object
-		obj.Put(fieldName, Value{fieldValue.Interface()})
+		if fieldValue.Kind() == reflect.Struct {
+			// Convert the struct to an object
+			obj.Put(fieldName, ObjectFromStruct(fieldValue.Interface()).Val())
+		} else {
+			// Convert field value to Value and add to object
+			obj.Put(fieldName, Value{fieldValue.Interface()})
+		}
 	}
 
 	// Add methods
