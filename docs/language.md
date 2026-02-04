@@ -104,3 +104,15 @@ fn Person(person) -> {
     }
 }
 ```
+
+#### Memory management
+
+All heap allocated types by default use an ownership model. However, if the value is being stored somewhere, 
+such as in a list with a different lifetime the memory model must be declared.
+
+For example:
+```
+my_list = [1, 2, 3]
+another_list = [my_list] // This is not allowed!
+another_list_2 = [RefCounted(my_list)]
+```

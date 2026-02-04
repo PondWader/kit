@@ -7,15 +7,16 @@ import (
 )
 
 type Object struct {
-	m map[string]Value
+	Binding any
+	m       map[string]Value
 }
 
 func NewObject() *Object {
-	return &Object{make(map[string]Value)}
+	return &Object{nil, make(map[string]Value)}
 }
 
 func ObjectFromMap(m map[string]Value) *Object {
-	return &Object{m}
+	return &Object{nil, m}
 }
 
 func (o *Object) Val() Value {
@@ -44,6 +45,7 @@ func (o *Object) GetString(key string) (string, error) {
 
 func ObjectFromStruct(v any) *Object {
 	obj := NewObject()
+	obj.Binding = v
 	val := reflect.ValueOf(v)
 
 	// Handle pointer to struct
