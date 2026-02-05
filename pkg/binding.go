@@ -65,13 +65,13 @@ func (tgz tarGzBinding) Extract(src values.Value) (values.Value, *values.Error) 
 	obj := values.NewObject()
 
 	var archiveDir string
-	obj.Put("from_archive_dir", values.Of(func(dst values.Value) error {
+	obj.Put("from_archive_dir", values.Of(func(dst values.Value) (values.Value, error) {
 		dir, ok := dst.ToString()
 		if !ok {
-			return values.FmtTypeError("tar.gz.extract(...).from_archive_dir", values.KindString)
+			return values.Nil, values.FmtTypeError("tar.gz.extract(...).from_archive_dir", values.KindString)
 		}
 		archiveDir = string(dir)
-		return nil
+		return obj.Val(), nil
 	}))
 
 	obj.Put("to", values.Of(func(dst values.Value) error {
@@ -105,7 +105,7 @@ func extractTar(tr *tar.Reader, archiveRoot string, dst *os.Root) error {
 			return err
 		}
 
-		target, err := filepath.Rel(archiveRoot, hdr.Name)
+		target, err := filepath.Rel(filepath.Join(".", archiveRoot), hdr.Name)
 		if err != nil {
 			return err
 		}
