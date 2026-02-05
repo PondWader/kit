@@ -11,3 +11,6 @@ Provides syntax highlighting for `.kit` files using a TextMate grammar.
 code --extensionDevelopmentPath=./vscode-kitlang
 ```
 
+## Installing
+
+`ctrl + shift + p` and selected `Install extension from location`. Select this directory.
