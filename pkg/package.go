@@ -130,6 +130,7 @@ func (p *Package) Install(version string) error {
 	if err != nil {
 		return err
 	}
+	defer m.Close()
 
 	if err = sb.SetupMount(m); err != nil {
 		return err
@@ -143,6 +144,9 @@ func (p *Package) Install(version string) error {
 	verDir := filepath.Join(pkgDir, "v"+version)
 	relInstallDir, err := filepath.Rel(p.k.Home.Name(), installDir)
 	if err != nil {
+		return err
+	}
+	if err = p.k.Home.RemoveAll(verDir); err != nil {
 		return err
 	}
 	if err = p.k.Home.Rename(relInstallDir, verDir); err != nil {

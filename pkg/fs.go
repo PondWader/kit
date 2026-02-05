@@ -130,7 +130,7 @@ func (kfs KitFS) TempDir() string {
 }
 
 func (kfs KitFS) BinDir() string {
-	return filepath.Join(kfs.Name(), "bin")
+	return "bin"
 }
 
 func (kfs KitFS) ReadDir(name string) ([]os.DirEntry, error) {

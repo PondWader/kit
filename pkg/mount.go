@@ -55,15 +55,18 @@ func (m *Mount) LinkBin(target, linkName string) error {
 func (m *Mount) Enable(dir string) error {
 	// TODO: maybe track these actions in the DB before performing them to rollback if the activation does not complete
 	for _, a := range m.actions {
-		var err error
 		switch a.Action {
 		case "link_bin":
-			err = os.Link(filepath.Join(dir, a.Data["target"]), filepath.Join(m.k.Home.BinDir(), a.Data["linkName"]))
+			linkPath := filepath.Join(m.k.Home.BinDir(), a.Data["linkName"])
+			if err := m.k.Home.Remove(linkPath); err != nil && !errors.Is(os.ErrNotExist, err) {
+				return err
+			}
+			if err := m.k.Home.Symlink(filepath.Join(dir, a.Data["target"]), linkPath); err != nil {
+				return err
+			}
+			m.k.t.Println("linked", linkPath, filepath.Join(m.k.Home.BinDir(), a.Data["linkName"]))
 		default:
 			return errors.New("unknown action \"" + a.Action + "\"")
-		}
-		if err != nil {
-			return err
 		}
 	}
 
