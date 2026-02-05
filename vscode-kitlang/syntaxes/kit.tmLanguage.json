@@ -1,0 +1,163 @@
+{
+  "name": "Kit",
+  "scopeName": "source.kit",
+  "patterns": [
+    {
+      "include": "#comments"
+    },
+    {
+      "include": "#strings"
+    },
+    {
+      "include": "#exported-function-declaration"
+    },
+    {
+      "include": "#function-declaration"
+    },
+    {
+      "include": "#export-declaration"
+    },
+    {
+      "include": "#keywords"
+    },
+    {
+      "include": "#numbers"
+    },
+    {
+      "include": "#operators"
+    },
+    {
+      "include": "#function-call"
+    },
+    {
+      "include": "#identifiers"
+    }
+  ],
+  "repository": {
+    "comments": {
+      "name": "comment.line.double-slash.kit",
+      "begin": "//",
+      "beginCaptures": {
+        "0": {
+          "name": "punctuation.definition.comment.kit"
+        }
+      },
+      "end": "$"
+    },
+    "strings": {
+      "name": "string.quoted.double.kit",
+      "begin": "\"",
+      "beginCaptures": {
+        "0": {
+          "name": "punctuation.definition.string.begin.kit"
+        }
+      },
+      "end": "\"",
+      "endCaptures": {
+        "0": {
+          "name": "punctuation.definition.string.end.kit"
+        }
+      },
+      "patterns": [
+        {
+          "include": "#interpolation"
+        }
+      ]
+    },
+    "interpolation": {
+      "name": "meta.interpolation.kit",
+      "begin": "\\$\\{",
+      "beginCaptures": {
+        "0": {
+          "name": "punctuation.section.interpolation.begin.kit"
+        }
+      },
+      "end": "\\}",
+      "endCaptures": {
+        "0": {
+          "name": "punctuation.section.interpolation.end.kit"
+        }
+      },
+      "patterns": [
+        {
+          "include": "#strings"
+        },
+        {
+          "include": "#numbers"
+        },
+        {
+          "include": "#keywords"
+        },
+        {
+          "include": "#operators"
+        },
+        {
+          "include": "#function-call"
+        },
+        {
+          "include": "#identifiers"
+        }
+      ]
+    },
+    "keywords": {
+      "patterns": [
+        {
+          "name": "keyword.control.kit",
+          "match": "\\b(export|fn|return)\\b"
+        }
+      ]
+    },
+    "numbers": {
+      "name": "constant.numeric.kit",
+      "match": "\\b\\d+(?:\\.\\d+)?\\b"
+    },
+    "operators": {
+      "name": "keyword.operator.kit",
+      "match": "->|=|\\+|-|\\*|/|%|==|!=|<=|>=|<|>"
+    },
+    "identifiers": {
+      "name": "variable.other.kit",
+      "match": "\\b[A-Za-z_][A-Za-z0-9_]*\\b"
+    },
+    "function-call": {
+      "name": "entity.name.function.kit",
+      "match": "\\b[A-Za-z_][A-Za-z0-9_]*\\b(?=\\s*\\()"
+    },
+    "exported-function-declaration": {
+      "match": "\\b(export)\\s+(fn)\\s+([A-Za-z_][A-Za-z0-9_]*)",
+      "captures": {
+        "1": {
+          "name": "keyword.control.kit"
+        },
+        "2": {
+          "name": "keyword.control.kit"
+        },
+        "3": {
+          "name": "entity.name.function.kit"
+        }
+      }
+    },
+    "function-declaration": {
+      "match": "\\b(fn)\\s+([A-Za-z_][A-Za-z0-9_]*)",
+      "captures": {
+        "1": {
+          "name": "keyword.control.kit"
+        },
+        "2": {
+          "name": "entity.name.function.kit"
+        }
+      }
+    },
+    "export-declaration": {
+      "match": "\\b(export)\\s+(?!fn\\b)([A-Za-z_][A-Za-z0-9_]*)",
+      "captures": {
+        "1": {
+          "name": "keyword.control.kit"
+        },
+        "2": {
+          "name": "variable.other.constant.kit"
+        }
+      }
+    }
+  }
+}

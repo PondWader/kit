@@ -1,0 +1,35 @@
+{
+  "name": "kitlang",
+  "displayName": "Kit Language",
+  "description": "Syntax highlighting for Kit language files",
+  "version": "0.0.1",
+  "publisher": "kitlang",
+  "engines": {
+    "vscode": "^1.80.0"
+  },
+  "categories": [
+    "Programming Languages"
+  ],
+  "contributes": {
+    "languages": [
+      {
+        "id": "kit",
+        "aliases": [
+          "Kit",
+          "kit"
+        ],
+        "extensions": [
+          ".kit"
+        ],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "kit",
+        "scopeName": "source.kit",
+        "path": "./syntaxes/kit.tmLanguage.json"
+      }
+    ]
+  }
+}

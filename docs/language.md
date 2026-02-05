@@ -25,7 +25,7 @@ Functions are only allowed to take a **single** argument and return a **single v
 ```
 fn split(str) -> {
     fn at(sep) -> {
-        # ...
+        // ...
         return parts
     }
 }
@@ -56,7 +56,7 @@ A list literal can be declared like so:
 
 ```kit
 pets = [pet1, pet2]
-first_per = pets[0] # Lists are 0 indexed
+first_per = pets[0] // Lists are 0 indexed
 ```
 
 Lists can be mutated:
@@ -99,7 +99,7 @@ fn Person(person) -> {
     date_of_birth = person.data_of_birth
 
     fn age() {
-        # ... Calculate age
+        // ... Calculate age
         return years
     }
 }
