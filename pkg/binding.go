@@ -4,6 +4,7 @@ import (
 	"archive/tar"
 	"compress/gzip"
 	"io"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -14,6 +15,8 @@ import (
 
 type installBinding struct {
 	RootDir *os.Root
+
+	mountSetup []func(m *Mount) error
 }
 
 func (b *installBinding) CreateSys() *values.Object {
@@ -38,7 +41,31 @@ func (b *installBinding) LinkBinDir(dirV values.Value) error {
 	if !ok {
 		return values.FmtTypeError("link_bin_dir", values.KindString)
 	}
-	_ = dir
+
+	dirPath := filepath.Join(".", string(dir))
+	entries, err := b.RootDir.FS().(fs.ReadDirFS).ReadDir(dirPath)
+	if err != nil {
+		return err
+	}
+
+	b.mountSetup = append(b.mountSetup, func(m *Mount) error {
+		for _, entry := range entries {
+			if err := m.LinkBin(filepath.Join(dirPath, entry.Name()), entry.Name()); err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+
+	return nil
+}
+
+func (b *installBinding) SetupMount(m *Mount) error {
+	for _, fn := range b.mountSetup {
+		if err := fn(m); err != nil {
+			return err
+		}
+	}
 	return nil
 }
 

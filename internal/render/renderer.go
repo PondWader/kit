@@ -55,7 +55,7 @@ func NewTerm(in, out *os.File) *Term {
 }
 
 func (r *Term) Println(v ...any) {
-	r.Mount(staticComponent{fmt.Sprint(v...)})
+	r.Mount(staticComponent{fmt.Sprintln(v...)})
 }
 
 func (r *Term) Update() {

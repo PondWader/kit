@@ -129,6 +129,10 @@ func (kfs KitFS) TempDir() string {
 	return filepath.Join(kfs.Name(), "tmp")
 }
 
+func (kfs KitFS) BinDir() string {
+	return filepath.Join(kfs.Name(), "bin")
+}
+
 func (kfs KitFS) ReadDir(name string) ([]os.DirEntry, error) {
 	root := kfs.FS().(fs.ReadDirFS)
 	return root.ReadDir(name)

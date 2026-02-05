@@ -1,6 +1,7 @@
 package kit
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -111,6 +112,7 @@ func (p *Package) Install(version string) error {
 	}
 	defer root.Close()
 
+	// Run install function
 	sb := &installBinding{RootDir: root}
 	sb.Load(env)
 
@@ -118,7 +120,46 @@ func (p *Package) Install(version string) error {
 	if cErr != nil {
 		return fmt.Errorf("error running install in %s: %w", filepath.Join(p.Path, "package.kit"), cErr)
 	}
-	return nil
+
+	// Create mount and track mount actions
+	m, err := NewMount(p.k, MountOptions{
+		Name:    p.Name,
+		Repo:    p.Repo,
+		Version: version,
+	})
+	if err != nil {
+		return err
+	}
+
+	if err = sb.SetupMount(m); err != nil {
+		return err
+	}
+
+	// Move to package dir
+	pkgDir := filepath.Join("packages", p.Name)
+	if err = p.k.Home.MkdirAll(pkgDir, 0755); err != nil {
+		return err
+	}
+	verDir := filepath.Join(pkgDir, "v"+version)
+	relInstallDir, err := filepath.Rel(p.k.Home.Name(), installDir)
+	if err != nil {
+		return err
+	}
+	if err = p.k.Home.Rename(relInstallDir, verDir); err != nil {
+		return err
+	}
+
+	// Enable the installation
+	// TODO: Disable other enabled versions
+	return m.Enable(verDir)
+}
+
+func (p *Package) Enable() error {
+	return errors.New("not supported yet")
+}
+
+func (p *Package) Disable() error {
+	return errors.New("not supported yet")
 }
 
 func compareVersions(a, b string) int {
