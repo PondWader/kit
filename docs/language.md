@@ -105,14 +105,35 @@ fn Person(person) -> {
 }
 ```
 
-#### Memory management
+#### Memory management (draft)
 
 All heap allocated types by default use an ownership model. However, if the value is being stored somewhere, 
 such as in a list with a different lifetime the memory model must be declared.
 
 For example:
-```
+```kit
 my_list = [1, 2, 3]
 another_list = [my_list] // This is not allowed!
 another_list_2 = [RefCounted(my_list)]
+```
+
+#### Async/threading (draft)
+
+Future is a core type that means a function will return a value in the future. Future always immediately returns whilst other execution can continue
+
+Functions can be marked with `async` or `fork`. `fork` runs the code in potentially another thread (green threads managed by the Kit runtime) whilst `async` just means other actions can be performed whilst i/o is pending.
+
+`fork` should always be preferred as it allows the program to leverage multiple threads however `async` can be used for thread-safety reasons when writing programs that operate on the same memory.
+
+```
+fork fn connect(): Future<Conn> {
+    conn = (fork tcp.connect("0.0.0.0",443)).await()
+    conn = connect().await()
+   return tcp.connect("0.0.0.0", 443) 
+} 
+
+// A warning should be emitted that this function could use fork since it has no side effect
+async fn connect(): Future<Conn> {
+   return async tcp.connect("0.0.0.0", 443) 
+}
 ```

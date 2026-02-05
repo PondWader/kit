@@ -27,6 +27,9 @@
       "include": "#operators"
     },
     {
+      "include": "#punctuation-accessor"
+    },
+    {
       "include": "#function-call"
     },
     {
@@ -60,22 +63,26 @@
       },
       "patterns": [
         {
-          "include": "#interpolation"
+          "include": "#template-expression"
+        },
+        {
+          "name": "constant.character.escape.kit",
+          "match": "\\\\."
         }
       ]
     },
-    "interpolation": {
-      "name": "meta.interpolation.kit",
+    "template-expression": {
+      "name": "meta.template.expression.kit",
       "begin": "\\$\\{",
       "beginCaptures": {
         "0": {
-          "name": "punctuation.section.interpolation.begin.kit"
+          "name": "punctuation.definition.template-expression.begin.kit"
         }
       },
       "end": "\\}",
       "endCaptures": {
         "0": {
-          "name": "punctuation.section.interpolation.end.kit"
+          "name": "punctuation.definition.template-expression.end.kit"
         }
       },
       "patterns": [
@@ -90,6 +97,9 @@
         },
         {
           "include": "#operators"
+        },
+        {
+          "include": "#punctuation-accessor"
         },
         {
           "include": "#function-call"
@@ -114,6 +124,10 @@
     "operators": {
       "name": "keyword.operator.kit",
       "match": "->|=|\\+|-|\\*|/|%|==|!=|<=|>=|<|>"
+    },
+    "punctuation-accessor": {
+      "name": "punctuation.accessor.kit",
+      "match": "\\."
     },
     "identifiers": {
       "name": "variable.other.kit",
