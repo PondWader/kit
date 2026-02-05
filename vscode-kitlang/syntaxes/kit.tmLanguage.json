@@ -18,6 +18,9 @@
       "include": "#export-declaration"
     },
     {
+      "include": "#function-keywords"
+    },
+    {
       "include": "#keywords"
     },
     {
@@ -96,6 +99,9 @@
           "include": "#keywords"
         },
         {
+          "include": "#function-keywords"
+        },
+        {
           "include": "#operators"
         },
         {
@@ -113,7 +119,15 @@
       "patterns": [
         {
           "name": "keyword.control.kit",
-          "match": "\\b(export|fn|return)\\b"
+          "match": "\\b(export|return)\\b"
+        }
+      ]
+    },
+    "function-keywords": {
+      "patterns": [
+        {
+          "name": "keyword.declaration.function.kit",
+          "match": "\\b(fn|async|fork)\\b"
         }
       ]
     },
@@ -144,7 +158,7 @@
           "name": "keyword.control.kit"
         },
         "2": {
-          "name": "keyword.control.kit"
+          "name": "keyword.declaration.function.kit"
         },
         "3": {
           "name": "entity.name.function.kit"
@@ -155,7 +169,7 @@
       "match": "\\b(fn)\\s+([A-Za-z_][A-Za-z0-9_]*)",
       "captures": {
         "1": {
-          "name": "keyword.control.kit"
+          "name": "keyword.declaration.function.kit"
         },
         "2": {
           "name": "entity.name.function.kit"
@@ -163,7 +177,7 @@
       }
     },
     "export-declaration": {
-      "match": "\\b(export)\\s+(?!fn\\b)([A-Za-z_][A-Za-z0-9_]*)",
+      "match": "\\b(export)\\s+(?!(?:fn|async|fork)\\b)([A-Za-z_][A-Za-z0-9_]*)",
       "captures": {
         "1": {
           "name": "keyword.control.kit"
