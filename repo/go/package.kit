@@ -2,7 +2,7 @@ export name = "go"
 
 export fn install(version) {
     resp = fetch("https://go.dev/dl/go${version}.${sys.OS}-${sys.ARCH}.tar.gz")
-    tar.gz.extract(resp).to("/")
+    tar.gz.extract(resp).from_archive_dir("/go").to("/")
     link_bin_dir("/bin")
 }
 

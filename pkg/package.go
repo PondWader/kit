@@ -2,6 +2,7 @@ package kit
 
 import (
 	"fmt"
+	"os"
 	"path/filepath"
 	"slices"
 	"strings"
@@ -97,7 +98,20 @@ func (p *Package) Install(version string) error {
 		return fmt.Errorf("error running install in %s: expected install export to be a function", filepath.Join(p.Path, "package.kit"))
 	}
 
-	sb := &installBinding{}
+	// Setup install temp dir
+	installDir, err := os.MkdirTemp(p.k.Home.TempDir(), "install-"+p.Name+"-")
+	if err != nil {
+		return fmt.Errorf("error running install in %s: %w", filepath.Join(p.Path, "package.kit"), err)
+	}
+	defer os.RemoveAll(installDir)
+
+	root, err := os.OpenRoot(installDir)
+	if err != nil {
+		return fmt.Errorf("error running install in %s: %w", filepath.Join(p.Path, "package.kit"), err)
+	}
+	defer root.Close()
+
+	sb := &installBinding{RootDir: root}
 	sb.Load(env)
 
 	_, cErr := installFn.Call(values.String(version).Val())

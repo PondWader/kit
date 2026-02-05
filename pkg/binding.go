@@ -2,6 +2,7 @@ package kit
 
 import (
 	"archive/tar"
+	"compress/gzip"
 	"io"
 	"os"
 	"path/filepath"
@@ -11,7 +12,9 @@ import (
 	"github.com/PondWader/kit/pkg/lang/values"
 )
 
-type installBinding struct{}
+type installBinding struct {
+	RootDir *os.Root
+}
 
 func (b *installBinding) CreateSys() *values.Object {
 	o := values.NewObject()
@@ -21,47 +24,78 @@ func (b *installBinding) CreateSys() *values.Object {
 }
 
 func (b *installBinding) CreateTar() *values.Object {
-	return values.ObjectFromStruct(tarBinding{})
+	return values.ObjectFromStruct(tarBinding{b: b, Gz: tarGzBinding{b: b}})
 }
 
 func (b *installBinding) Load(env *lang.Environment) {
 	env.Set("sys", b.CreateSys().Val())
 	env.Set("tar", b.CreateTar().Val())
+	env.Set("link_bin_dir", values.Of(b.LinkBinDir))
+}
+
+func (b *installBinding) LinkBinDir(dirV values.Value) error {
+	dir, ok := dirV.ToString()
+	if !ok {
+		return values.FmtTypeError("link_bin_dir", values.KindString)
+	}
+	_ = dir
+	return nil
 }
 
 type tarBinding struct {
+	b  *installBinding
 	Gz tarGzBinding
 }
 
-type tarGzBinding struct{}
+type tarGzBinding struct {
+	b *installBinding
+}
 
 func (tgz tarGzBinding) Extract(src values.Value) (values.Value, *values.Error) {
-	// TODO: should have a better interface system so doesn't need to use bindings
 	srcObj, ok := src.ToObject()
 	if !ok {
 		return values.Nil, values.NewError("expected readable i/o object as argument to tar.gz.extract")
 	}
+	// TODO: should have a better interface system so doesn't need to use bindings
 	r, ok := srcObj.Binding.(io.Reader)
 	if !ok {
 		return values.Nil, values.NewError("expected readable i/o object as argument to tar.gz.extract")
 	}
 
 	obj := values.NewObject()
+
+	var archiveDir string
+	obj.Put("from_archive_dir", values.Of(func(dst values.Value) error {
+		dir, ok := dst.ToString()
+		if !ok {
+			return values.FmtTypeError("tar.gz.extract(...).from_archive_dir", values.KindString)
+		}
+		archiveDir = string(dir)
+		return nil
+	}))
+
 	obj.Put("to", values.Of(func(dst values.Value) error {
 		dstStr, ok := dst.ToString()
 		if !ok {
-			return values.FmtTypeError("tar.gz.extract.to", values.KindString)
+			return values.FmtTypeError("tar.gz.extract(...).to", values.KindString)
 		}
-		_ = dstStr
-		_ = r
-		// TODO: resolve path to install path
-		// return extractTar(tar.NewReader(r), string(dstStr))
-		return values.NewError("not implemented")
+		gr, err := gzip.NewReader(r)
+		if err != nil {
+			return err
+		}
+
+		resolvedDst := filepath.Join(".", string(dstStr))
+		root, err := tgz.b.RootDir.OpenRoot(resolvedDst)
+		if err != nil {
+			return err
+		}
+
+		return extractTar(tar.NewReader(gr), archiveDir, root)
 	}))
 	return obj.Val(), nil
 }
 
-func extractTar(tr *tar.Reader, dst string) error {
+func extractTar(tr *tar.Reader, archiveRoot string, dst *os.Root) error {
 	for {
 		hdr, err := tr.Next()
 		if err == io.EOF {
@@ -71,15 +105,18 @@ func extractTar(tr *tar.Reader, dst string) error {
 			return err
 		}
 
-		target := filepath.Join(dst, hdr.Name)
+		target, err := filepath.Rel(archiveRoot, hdr.Name)
+		if err != nil {
+			return err
+		}
 
 		switch hdr.Typeflag {
 		case tar.TypeDir:
-			if err := os.MkdirAll(target, os.FileMode(hdr.Mode)); err != nil {
+			if err := dst.MkdirAll(target, os.FileMode(hdr.Mode)); err != nil {
 				return err
 			}
 		case tar.TypeReg:
-			if err := extractTarFile(tr, target, os.FileMode(hdr.Mode)); err != nil {
+			if err := extractTarFile(tr, dst, target, os.FileMode(hdr.Mode)); err != nil {
 				return err
 			}
 		}
@@ -87,11 +124,11 @@ func extractTar(tr *tar.Reader, dst string) error {
 	return nil
 }
 
-func extractTarFile(r io.Reader, target string, mode os.FileMode) error {
-	if err := os.MkdirAll(filepath.Dir(target), 0o755); err != nil {
+func extractTarFile(r io.Reader, dst *os.Root, name string, mode os.FileMode) error {
+	if err := dst.MkdirAll(filepath.Dir(name), 0o755); err != nil {
 		return err
 	}
-	f, err := os.OpenFile(target, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, mode)
+	f, err := dst.OpenFile(name, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, mode)
 	if err != nil {
 		return err
 	}

@@ -26,7 +26,12 @@ func fetch(url values.Value) (values.Value, error) {
 	}
 	req.Header.Set("User-Agent", "Kit Package Manager")
 
-	resp := PendingFetch{req}
+	res, err := client.Do(req)
+	if err != nil {
+		return values.Nil, err
+	}
+
+	resp := PendingFetch{req, res}
 
 	obj := values.ObjectFromStruct(resp)
 	return values.Of(obj), nil
@@ -34,20 +39,17 @@ func fetch(url values.Value) (values.Value, error) {
 
 type PendingFetch struct {
 	req *http.Request
+	res *http.Response
 }
 
 func (f PendingFetch) Text() (values.Value, error) {
-	resp, err := client.Do(f.req)
-	if err != nil {
-		return values.Nil, err
-	}
-	defer resp.Body.Close()
+	defer f.res.Body.Close()
 
-	if resp.StatusCode >= 300 {
-		return values.Nil, values.NewError("received error status: " + resp.Status)
+	if f.res.StatusCode >= 300 {
+		return values.Nil, values.NewError("received error status: " + f.res.Status)
 	}
 
-	body, err := io.ReadAll(resp.Body)
+	body, err := io.ReadAll(f.res.Body)
 	if err != nil {
 		return values.Nil, err
 	}
@@ -56,5 +58,5 @@ func (f PendingFetch) Text() (values.Value, error) {
 }
 
 func (f PendingFetch) Read(p []byte) (n int, err error) {
-	return f.req.Body.Read(p)
+	return f.res.Body.Read(p)
 }
