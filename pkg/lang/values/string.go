@@ -43,9 +43,9 @@ func (s String) Get(key string) Value {
 	switch key {
 	case "trim_whitespace":
 		return Of(s.TrimWhitespace)
-	case "cut_prefix_before":
+	case "inclusive_remove_until":
 		return Of(s.CutPrefixBefore)
-	case "cut_suffix_after":
+	case "inclusive_remove_after":
 		return Of(s.CutSuffixAfter)
 	case "split":
 		return Of(s.Split)

@@ -11,5 +11,5 @@ export fn versions() {
         .text()
         .trim_whitespace()
         .split("\n")
-        .map(l -> l.cut_prefix_before("-go").cut_suffix_after("."))
+        .map(l -> l.inclusive_remove_until("-go").inclusive_remove_after("."))
 }
