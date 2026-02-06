@@ -1,6 +1,7 @@
 {
   "name": "kitlang",
   "displayName": "Kit Language",
+  "icon": "./icon.png",
   "description": "Syntax highlighting for Kit language files",
   "version": "0.0.1",
   "publisher": "kitlang",
