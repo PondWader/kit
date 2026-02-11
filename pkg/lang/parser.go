@@ -201,6 +201,10 @@ func (p *parser) parseExpression() (Node, error) {
 }
 
 func (p *parser) parseExpressionFromToken(tok tokens.Token) (Node, error) {
+	return p.parseExpressionFromTokenPrec(tok, 0)
+}
+
+func (p *parser) parseExpressionFromTokenPrec(tok tokens.Token, minPrec int) (Node, error) {
 	var node Node
 	var err error
 	switch tok.Kind {
@@ -223,10 +227,26 @@ func (p *parser) parseExpressionFromToken(tok tokens.Token) (Node, error) {
 	if err != nil {
 		return node, err
 	}
-	return p.parseOperation(node)
+	return p.parseOperation(node, minPrec)
 }
 
-func (p *parser) parseOperation(node Node) (Node, error) {
+func precedenceOf(kind tokens.TokenKind) int {
+	switch kind {
+	case tokens.TokenKindLogicalOr:
+		return 1
+	case tokens.TokenKindLogicalAnd:
+		return 2
+	case tokens.TokenKindEquals, tokens.TokenKindNotEquals:
+		return 3
+	case tokens.TokenKindLessThan, tokens.TokenKindLessThanOrEqual,
+		tokens.TokenKindGreaterThan, tokens.TokenKindGreaterThanOrEqual:
+		return 4
+	default:
+		return 0
+	}
+}
+
+func (p *parser) parseOperation(node Node, minPrec int) (Node, error) {
 	for {
 		next, err := p.nextAfterWhiteSpace()
 		if err != nil {
@@ -244,7 +264,12 @@ func (p *parser) parseOperation(node Node) (Node, error) {
 			node, err = p.parseLambda(node)
 		case tokens.TokenKindEquals, tokens.TokenKindNotEquals, tokens.TokenKindLessThan, tokens.TokenKindLessThanOrEqual,
 			tokens.TokenKindGreaterThan, tokens.TokenKindGreaterThanOrEqual, tokens.TokenKindLogicalAnd, tokens.TokenKindLogicalOr:
-			node, err = p.parseBinaryOp(node, next.Kind)
+			prec := precedenceOf(next.Kind)
+			if prec < minPrec {
+				p.l.Unread(next)
+				return node, nil
+			}
+			node, err = p.parseBinaryOp(node, next.Kind, prec)
 		default:
 			p.l.Unread(next)
 			return node, nil
@@ -438,10 +463,12 @@ func (p *parser) parseBlock() (NodeBlock, error) {
 	}
 }
 
-func (p *parser) parseBinaryOp(left Node, op tokens.TokenKind) (Node, error) {
-	// TODO: operator precedence
-
-	right, err := p.parseExpression()
+func (p *parser) parseBinaryOp(left Node, op tokens.TokenKind, prec int) (Node, error) {
+	tok, err := p.nextAfterWhiteSpace()
+	if err != nil {
+		return nil, err
+	}
+	right, err := p.parseExpressionFromTokenPrec(tok, prec+1)
 	if err != nil {
 		return nil, err
 	}
