@@ -138,3 +138,11 @@ func (v Value) ToFunction() (f Function, ok bool) {
 	f, ok = v.Obj.(Function)
 	return
 }
+
+func (v Value) Equals(o Value) (bool, *Error) {
+	if v.Kind() != o.Kind() {
+		return false, NewError("values in equals must be of the same kind: got " + v.Kind().String() + " and " + o.Kind().String())
+	}
+
+	return reflect.ValueOf(v.Obj).Equal(reflect.ValueOf(o.Obj)), nil
+}

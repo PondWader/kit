@@ -1,6 +1,7 @@
 package lang
 
 import (
+	"cmp"
 	"fmt"
 	"strings"
 
@@ -296,4 +297,95 @@ func (n NodeIf) String() string {
 		s += " else " + n.Else.String()
 	}
 	return s
+}
+
+type NodeEquals struct {
+	Left  Node
+	Right Node
+}
+
+func (n NodeEquals) Eval(e *Environment) (values.Value, *values.Error) {
+	left, err := n.Left.Eval(e)
+	if err != nil {
+		return values.Nil, err
+	}
+	right, err := n.Right.Eval(e)
+	if err != nil {
+		return values.Nil, err
+	}
+
+	result, err := left.Equals(right)
+	return values.Of(result), err
+}
+
+func (n NodeEquals) String() string {
+	return n.Left.String() + " == " + n.Right.String()
+}
+
+type NodeNumberComparison struct {
+	Target    int
+	Inclusive bool
+	Left      Node
+	Right     Node
+}
+
+func (n NodeNumberComparison) Eval(e *Environment) (values.Value, *values.Error) {
+	leftV, err := n.Left.Eval(e)
+	if err != nil {
+		return values.Nil, err
+	}
+	rightV, err := n.Right.Eval(e)
+	if err != nil {
+		return values.Nil, err
+	}
+
+	left, ok := leftV.ToNumber()
+	if !ok {
+		return values.Nil, values.FmtTypeError(n.OpSymbol(), values.KindNumber)
+	}
+	right, ok := rightV.ToNumber()
+	if !ok {
+		return values.Nil, values.FmtTypeError(n.OpSymbol(), values.KindNumber)
+	}
+
+	return values.Of(cmp.Compare(left, right) == n.Target || (n.Inclusive && left == right)), nil
+}
+
+func (n NodeNumberComparison) String() string {
+	return n.Left.String() + " " + n.OpSymbol() + " " + n.Right.String()
+}
+
+func (n NodeNumberComparison) OpSymbol() string {
+	var op string
+	if n.Target == 0 {
+		op = "=="
+	} else if n.Target < 0 {
+		op = "<"
+	} else if n.Target > 0 {
+		op = ">"
+	}
+	if n.Inclusive && n.Target != 0 {
+		op += "="
+	}
+	return op
+}
+
+type NodeNot struct {
+	Inner Node
+}
+
+func (n NodeNot) Eval(e *Environment) (values.Value, *values.Error) {
+	v, err := n.Inner.Eval(e)
+	if err != nil {
+		return values.Nil, err
+	}
+	b, ok := v.ToBool()
+	if !ok {
+		return values.Nil, values.FmtTypeError("! (not)", values.KindBool)
+	}
+	return values.Of(!b), nil
+}
+
+func (n NodeNot) String() string {
+	return "!" + n.Inner.String()
 }
