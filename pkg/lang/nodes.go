@@ -389,3 +389,57 @@ func (n NodeNot) Eval(e *Environment) (values.Value, *values.Error) {
 func (n NodeNot) String() string {
 	return "!" + n.Inner.String()
 }
+
+type LogicalOp uint8
+
+const (
+	LogicalOpAnd LogicalOp = iota
+	LogicalOpOr
+)
+
+func (op LogicalOp) String() string {
+	switch op {
+	case LogicalOpAnd:
+		return "&&"
+	case LogicalOpOr:
+		return "||"
+	default:
+		return "<invalid op>"
+	}
+}
+
+type NodeLogicalOp struct {
+	Left  Node
+	Right Node
+	Op    LogicalOp
+}
+
+func (n NodeLogicalOp) Eval(e *Environment) (values.Value, *values.Error) {
+	v, err := n.Left.Eval(e)
+	if err != nil {
+		return values.Nil, err
+	}
+	b, ok := v.ToBool()
+	if !ok {
+		return values.Nil, values.FmtTypeError(n.Op.String(), values.KindBool)
+	}
+
+	if !b {
+		return values.Of(false), nil
+	}
+
+	v, err = n.Right.Eval(e)
+	if err != nil {
+		return values.Nil, err
+	}
+	b, ok = v.ToBool()
+	if !ok {
+		return values.Nil, values.FmtTypeError(n.Op.String(), values.KindBool)
+	}
+
+	return values.Of(b), nil
+}
+
+func (n NodeLogicalOp) String() string {
+	return n.Left.String() + " " + n.Op.String() + " " + n.Right.String()
+}

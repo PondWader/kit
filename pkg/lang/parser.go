@@ -240,7 +240,8 @@ func (p *parser) parseOperation(node Node) (Node, error) {
 			node, err = p.parseCallExpression(node)
 		case tokens.TokenKindArrow:
 			node, err = p.parseLambda(node)
-		case tokens.TokenKindEquals, tokens.TokenKindNotEquals, tokens.TokenKindLessThan, tokens.TokenKindLessThanOrEqual, tokens.TokenKindGreaterThan, tokens.TokenKindGreaterThanOrEqual:
+		case tokens.TokenKindEquals, tokens.TokenKindNotEquals, tokens.TokenKindLessThan, tokens.TokenKindLessThanOrEqual,
+			tokens.TokenKindGreaterThan, tokens.TokenKindGreaterThanOrEqual, tokens.TokenKindLogicalAnd, tokens.TokenKindLogicalOr:
 			node, err = p.parseBinaryOp(node, next.Kind)
 		default:
 			p.l.Unread(next)
@@ -436,6 +437,8 @@ func (p *parser) parseBlock() (NodeBlock, error) {
 }
 
 func (p *parser) parseBinaryOp(left Node, op tokens.TokenKind) (Node, error) {
+	// TODO: operator precedence
+
 	right, err := p.parseExpression()
 	if err != nil {
 		return nil, err
@@ -452,6 +455,10 @@ func (p *parser) parseBinaryOp(left Node, op tokens.TokenKind) (Node, error) {
 		return NodeNumberComparison{Target: -1, Left: left, Right: right, Inclusive: op == tokens.TokenKindLessThanOrEqual}, nil
 	case tokens.TokenKindGreaterThan, tokens.TokenKindGreaterThanOrEqual:
 		return NodeNumberComparison{Target: 1, Left: left, Right: right, Inclusive: op == tokens.TokenKindGreaterThanOrEqual}, nil
+	case tokens.TokenKindLogicalAnd:
+		return NodeLogicalOp{Left: left, Right: right, Op: LogicalOpAnd}, nil
+	case tokens.TokenKindLogicalOr:
+		return NodeLogicalOp{Left: left, Right: right, Op: LogicalOpOr}, nil
 	default:
 		return nil, errors.New("unexpected binary operation: " + op.String())
 	}
