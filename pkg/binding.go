@@ -18,8 +18,13 @@ import (
 	"github.com/ulikunitz/xz"
 )
 
+type mountBinding struct {
+	MountDir string
+}
+
 type installBinding struct {
 	RootDir *os.Root
+	Install *mountBinding
 
 	mountSetup []func(m *Mount) error
 }
@@ -100,6 +105,9 @@ func (b *installBinding) Load(env *lang.Environment) {
 	env.Set("zip", b.CreateZip().Val())
 	env.Set("fs", b.CreateFs().Val())
 	env.Set("link_bin_dir", values.Of(b.LinkBinDir))
+	if b.Install != nil {
+		env.Set("install", values.ObjectFromStruct(b.Install).Val())
+	}
 }
 
 func (b *installBinding) LinkBinDir(dirV values.Value) error {

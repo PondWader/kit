@@ -112,8 +112,15 @@ func (p *Package) Install(version string) error {
 	}
 	defer root.Close()
 
+	// Locate mount dir where the install will be located
+	pkgDir := filepath.Join("packages", p.Name)
+	if err = p.k.Home.MkdirAll(pkgDir, 0755); err != nil {
+		return err
+	}
+	mountDir := filepath.Join(pkgDir, "v"+version)
+
 	// Run install function
-	sb := &installBinding{RootDir: root}
+	sb := &installBinding{RootDir: root, Install: &mountBinding{MountDir: mountDir}}
 	sb.Load(env)
 
 	_, cErr := installFn.Call(values.String(version).Val())
@@ -137,25 +144,20 @@ func (p *Package) Install(version string) error {
 	}
 
 	// Move to package dir
-	pkgDir := filepath.Join("packages", p.Name)
-	if err = p.k.Home.MkdirAll(pkgDir, 0755); err != nil {
-		return err
-	}
-	verDir := filepath.Join(pkgDir, "v"+version)
 	relInstallDir, err := filepath.Rel(p.k.Home.Name(), installDir)
 	if err != nil {
 		return err
 	}
-	if err = p.k.Home.RemoveAll(verDir); err != nil {
+	if err = p.k.Home.RemoveAll(mountDir); err != nil {
 		return err
 	}
-	if err = p.k.Home.Rename(relInstallDir, verDir); err != nil {
+	if err = p.k.Home.Rename(relInstallDir, mountDir); err != nil {
 		return err
 	}
 
 	// Enable the installation
 	// TODO: Disable other enabled versions
-	return m.Enable(verDir)
+	return m.Enable(mountDir)
 }
 
 func (p *Package) Enable() error {
