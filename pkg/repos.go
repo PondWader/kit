@@ -3,11 +3,12 @@ package kit
 import (
 	"errors"
 	"fmt"
+	"io"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"slices"
 	"strings"
-	"syscall"
 	"time"
 
 	"github.com/PondWader/kit/internal/gitcli"
@@ -184,17 +185,11 @@ func (k *Kit) PullRepos() error {
 		repoDir := filepath.Join(k.Home.Name(), "repos", repo.Name)
 
 		if repo.Type == "dir" {
-			if link, err := os.Readlink(repoDir); link == repoDir {
-				continue
-			} else if errors.Is(err, syscall.EINVAL) || (err == nil && link != repoDir) {
-				if err = os.RemoveAll(repoDir); err != nil {
-					return err
-				}
-			} else if !errors.Is(err, os.ErrNotExist) {
+			// For now just remove all then recopy, in the future copyDir should become syncDir
+			if err = os.RemoveAll(repoDir); err != nil {
 				return err
 			}
-
-			if err = os.Symlink(repo.URL, repoDir); err != nil {
+			if err = copyDir(repo.URL, repoDir); err != nil {
 				return err
 			}
 
@@ -336,4 +331,60 @@ func pull(path string, o *git.PullOptions, t *render.Term) (*git.Repository, err
 		Password: cred.Password,
 	}
 	return repo, wt.Pull(o)
+}
+
+// Based on [os.CopyFS] but uses different permissions.
+func copyDir(src, dst string) error {
+	root, err := os.OpenRoot(src)
+	if err != nil {
+		return err
+	}
+	fsys := root.FS()
+
+	return fs.WalkDir(fsys, ".", func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+
+		fpath, err := filepath.Localize(path)
+		if err != nil {
+			return err
+		}
+		newPath := filepath.Join(dst, fpath)
+
+		switch d.Type() {
+		case fs.ModeDir:
+			return os.MkdirAll(newPath, 0744)
+		case fs.ModeSymlink:
+			target, err := fs.ReadLink(fsys, path)
+			if err != nil {
+				return err
+			}
+			// Symlink must be relative or else errors will occur when reading
+			// This is not currently validated whilst copying
+			return os.Symlink(target, newPath)
+		case 0:
+			r, err := fsys.Open(path)
+			if err != nil {
+				return err
+			}
+			defer r.Close()
+			info, err := r.Stat()
+			if err != nil {
+				return err
+			}
+			w, err := os.OpenFile(newPath, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0644|info.Mode()&0744)
+			if err != nil {
+				return err
+			}
+
+			if _, err := io.Copy(w, r); err != nil {
+				w.Close()
+				return &fs.PathError{Op: "Copy", Path: newPath, Err: err}
+			}
+			return w.Close()
+		default:
+			return &fs.PathError{Op: "CopyFS", Path: path, Err: fs.ErrInvalid}
+		}
+	})
 }
