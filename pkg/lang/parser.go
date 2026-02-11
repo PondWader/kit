@@ -212,7 +212,7 @@ func (p *parser) parseExpressionFromTokenPrec(tok tokens.Token, minPrec int) (No
 		node = NodeIdentifier{Ident: tok.Literal}
 	case tokens.TokenKindNumberLiteral:
 		var num float64
-		num, err = strconv.ParseFloat(tok.Literal, 64)
+		num, err = parseNumberLiteral(tok.Literal)
 		node = NodeLiteral{Value: values.Of(num)}
 	case tokens.TokenKindDoubleQuote:
 		node, err = p.parseString('"')
@@ -528,4 +528,31 @@ func join[T fmt.Stringer](items []T, sep string) string {
 		elems[i] = item.String()
 	}
 	return strings.Join(elems, sep)
+}
+
+func parseNumberLiteral(lit string) (float64, error) {
+	// Strip underscore separators
+	cleaned := strings.ReplaceAll(lit, "_", "")
+
+	// Strip BigInt suffix
+	if len(cleaned) > 0 && cleaned[len(cleaned)-1] == 'n' {
+		cleaned = cleaned[:len(cleaned)-1]
+	}
+
+	// Handle prefixed integer formats
+	if len(cleaned) > 2 && cleaned[0] == '0' {
+		switch cleaned[1] {
+		case 'x', 'X':
+			n, err := strconv.ParseInt(cleaned[2:], 16, 64)
+			return float64(n), err
+		case 'b', 'B':
+			n, err := strconv.ParseInt(cleaned[2:], 2, 64)
+			return float64(n), err
+		case 'o', 'O':
+			n, err := strconv.ParseInt(cleaned[2:], 8, 64)
+			return float64(n), err
+		}
+	}
+
+	return strconv.ParseFloat(cleaned, 64)
 }

@@ -140,8 +140,24 @@
       ]
     },
     "numbers": {
-      "name": "constant.numeric.kit",
-      "match": "\\b\\d+(?:\\.\\d+)?\\b"
+      "patterns": [
+        {
+          "name": "constant.numeric.hex.kit",
+          "match": "\\b0[xX][0-9a-fA-F][0-9a-fA-F_]*n?\\b"
+        },
+        {
+          "name": "constant.numeric.binary.kit",
+          "match": "\\b0[bB][01][01_]*n?\\b"
+        },
+        {
+          "name": "constant.numeric.octal.kit",
+          "match": "\\b0[oO][0-7][0-7_]*n?\\b"
+        },
+        {
+          "name": "constant.numeric.decimal.kit",
+          "match": "\\b\\d[\\d_]*(?:\\.[\\d_]+)?(?:[eE][+-]?[\\d_]+)?n?\\b"
+        }
+      ]
     },
     "operators": {
       "name": "keyword.operator.kit",
