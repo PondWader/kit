@@ -7,12 +7,14 @@ import (
 	"path/filepath"
 	"slices"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/PondWader/kit/internal/gitcli"
 	"github.com/PondWader/kit/internal/render"
 	"github.com/PondWader/kit/pkg/db"
 	"github.com/PondWader/kit/pkg/lang"
+	"github.com/PondWader/kit/pkg/lang/values"
 	"github.com/go-git/go-git/v6"
 	"github.com/go-git/go-git/v6/plumbing"
 	"github.com/go-git/go-git/v6/plumbing/transport"
@@ -110,12 +112,16 @@ func (k *Kit) loadRepos() error {
 		if err != nil {
 			return fmt.Errorf("error loading %s: %w", filepath.Join(k.Home.Name(), "repositories.kit"), err)
 		}
-		repo.Branch, err = o.GetString("branch")
-		if err != nil {
-			return fmt.Errorf("error loading %s: %w", filepath.Join(k.Home.Name(), "repositories.kit"), err)
+
+		if repo.Type == "git" {
+			repo.Branch, err = o.GetString("branch")
+			if err != nil {
+				return fmt.Errorf("error loading %s: %w", filepath.Join(k.Home.Name(), "repositories.kit"), err)
+			}
 		}
+
 		repo.Dir, err = o.GetString("dir")
-		if err != nil {
+		if err != nil && !errors.Is(err, values.ErrKeyNotFound) {
 			return fmt.Errorf("error loading %s: %w", filepath.Join(k.Home.Name(), "repositories.kit"), err)
 		}
 
@@ -175,11 +181,30 @@ func (k *Kit) PullRepos() error {
 	}
 
 	for _, repo := range k.Repos {
-		if repo.Type != "git" {
+		repoDir := filepath.Join(k.Home.Name(), "repos", repo.Name)
+
+		if repo.Type == "dir" {
+			if link, err := os.Readlink(repoDir); link == repoDir {
+				continue
+			} else if errors.Is(err, syscall.EINVAL) || (err == nil && link != repoDir) {
+				if err = os.RemoveAll(repoDir); err != nil {
+					return err
+				}
+			} else if !errors.Is(err, os.ErrNotExist) {
+				return err
+			}
+
+			if err = os.Symlink(repo.URL, repoDir); err != nil {
+				return err
+			}
+
+			if err = repo.index(k); err != nil {
+				return err
+			}
+			continue
+		} else if repo.Type != "git" {
 			return errors.New("error pulling repos: repository type \"" + repo.Type + "\" is not supported (only \"git\" is supported at this time)")
 		}
-
-		repoDir := filepath.Join(k.Home.Name(), "repos", repo.Name)
 
 		doIndex := true
 

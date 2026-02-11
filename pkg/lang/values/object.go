@@ -2,9 +2,12 @@ package values
 
 import (
 	"errors"
+	"fmt"
 	"reflect"
 	"unicode"
 )
+
+var ErrKeyNotFound = errors.New("key does not exist")
 
 type Object struct {
 	Binding any
@@ -34,11 +37,11 @@ func (o *Object) Get(key string) Value {
 func (o *Object) GetString(key string) (string, error) {
 	v, ok := o.m[key]
 	if !ok {
-		return "", errors.New("expected string value called \"key\" not found")
+		return "", fmt.Errorf("%w: looking for string value called \"%s\"", ErrKeyNotFound, key)
 	}
 	str, ok := v.ToString()
 	if !ok {
-		return "", errors.New("expected string value called \"key\" is of type " + v.Kind().String())
+		return "", errors.New("expected string value called \"" + key + "\" is of type " + v.Kind().String())
 	}
 	return str.String(), nil
 }
