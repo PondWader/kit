@@ -1,6 +1,7 @@
 package std
 
 import (
+	"encoding/json"
 	"io"
 	"net/http"
 	"time"
@@ -55,6 +56,47 @@ func (f PendingFetch) Text() (values.Value, error) {
 	}
 
 	return values.Of(string(body)), nil
+}
+
+func (f PendingFetch) Json() (values.Value, error) {
+	defer f.res.Body.Close()
+
+	if f.res.StatusCode >= 300 {
+		return values.Nil, values.NewError("received error status: " + f.res.Status)
+	}
+
+	dec := json.NewDecoder(f.res.Body)
+	var parsed any
+	if err := dec.Decode(&parsed); err != nil {
+		return values.Nil, err
+	}
+
+	return jsonToValue(parsed), nil
+}
+
+func jsonToValue(v any) values.Value {
+	switch v := v.(type) {
+	case map[string]any:
+		obj := values.NewObject()
+		for key, val := range v {
+			obj.Put(key, jsonToValue(val))
+		}
+		return obj.Val()
+	case []any:
+		list := values.NewList(len(v))
+		for i, val := range v {
+			list.Set(i, jsonToValue(val))
+		}
+		return list.Val()
+	case string:
+		return values.Of(v)
+	case float64:
+		return values.Of(v)
+	case bool:
+		return values.Of(v)
+	default:
+		return values.Nil
+	}
 }
 
 func (f PendingFetch) Read(p []byte) (n int, err error) {

@@ -39,6 +39,30 @@ func (s String) Split(sep Value) (Value, *Error) {
 	return Of(strings.Split(string(s), sepStr.String())), nil
 }
 
+func (s String) EndsWith(suffix Value) (Value, *Error) {
+	suffixStr, ok := suffix.ToString()
+	if !ok {
+		return Nil, FmtTypeError("ends_with", KindString)
+	}
+	return Of(strings.HasSuffix(string(s), suffixStr.String())), nil
+}
+
+func (s String) RemovePrefix(prefix Value) (Value, *Error) {
+	prefixStr, ok := prefix.ToString()
+	if !ok {
+		return Nil, FmtTypeError("remove_prefix", KindString)
+	}
+	return Of(strings.TrimPrefix(string(s), prefixStr.String())), nil
+}
+
+func (s String) RemoveSuffix(suffix Value) (Value, *Error) {
+	suffixStr, ok := suffix.ToString()
+	if !ok {
+		return Nil, FmtTypeError("remove_suffix", KindString)
+	}
+	return Of(strings.TrimSuffix(string(s), suffixStr.String())), nil
+}
+
 func (s String) Get(key string) Value {
 	switch key {
 	case "trim_whitespace":
@@ -49,6 +73,12 @@ func (s String) Get(key string) Value {
 		return Of(s.CutSuffixAfter)
 	case "split":
 		return Of(s.Split)
+	case "ends_with":
+		return Of(s.EndsWith)
+	case "remove_prefix":
+		return Of(s.RemovePrefix)
+	case "remove_suffix":
+		return Of(s.RemoveSuffix)
 	default:
 		return Nil
 	}

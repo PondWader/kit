@@ -2,8 +2,11 @@ package kit
 
 import (
 	"archive/tar"
+	"archive/zip"
+	"bytes"
 	"compress/gzip"
 	"io"
+
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -11,6 +14,7 @@ import (
 
 	"github.com/PondWader/kit/pkg/lang"
 	"github.com/PondWader/kit/pkg/lang/values"
+	"github.com/ulikunitz/xz"
 )
 
 type installBinding struct {
@@ -27,12 +31,25 @@ func (b *installBinding) CreateSys() *values.Object {
 }
 
 func (b *installBinding) CreateTar() *values.Object {
-	return values.ObjectFromStruct(tarBinding{b: b, Gz: tarGzBinding{b: b}})
+	return values.ObjectFromStruct(tarBinding{
+		b: b,
+		Gz: tarLayer{b: b, newReader: func(r io.Reader) (io.Reader, error) {
+			return gzip.NewReader(r)
+		}},
+		Xz: tarLayer{b: b, newReader: func(r io.Reader) (io.Reader, error) {
+			return xz.NewReader(r)
+		}},
+	})
+}
+
+func (b *installBinding) CreateZip() *values.Object {
+	return values.ObjectFromStruct(zipBinding{b: b})
 }
 
 func (b *installBinding) Load(env *lang.Environment) {
 	env.Set("sys", b.CreateSys().Val())
 	env.Set("tar", b.CreateTar().Val())
+	env.Set("zip", b.CreateZip().Val())
 	env.Set("link_bin_dir", values.Of(b.LinkBinDir))
 }
 
@@ -71,14 +88,16 @@ func (b *installBinding) SetupMount(m *Mount) error {
 
 type tarBinding struct {
 	b  *installBinding
-	Gz tarGzBinding
+	Gz tarLayer
+	Xz tarLayer
 }
 
-type tarGzBinding struct {
-	b *installBinding
+type tarLayer struct {
+	b         *installBinding
+	newReader func(r io.Reader) (io.Reader, error)
 }
 
-func (tgz tarGzBinding) Extract(src values.Value) (values.Value, *values.Error) {
+func (tl tarLayer) Extract(src values.Value) (values.Value, *values.Error) {
 	srcObj, ok := src.ToObject()
 	if !ok {
 		return values.Nil, values.NewError("expected readable i/o object as argument to tar.gz.extract")
@@ -106,19 +125,74 @@ func (tgz tarGzBinding) Extract(src values.Value) (values.Value, *values.Error) 
 		if !ok {
 			return values.FmtTypeError("tar.gz.extract(...).to", values.KindString)
 		}
-		gr, err := gzip.NewReader(r)
+		gr, err := tl.newReader(r)
 		if err != nil {
 			return err
 		}
 
 		resolvedDst := filepath.Join(".", string(dstStr))
-		root, err := tgz.b.RootDir.OpenRoot(resolvedDst)
+		root, err := tl.b.RootDir.OpenRoot(resolvedDst)
 		if err != nil {
 			return err
 		}
 
 		return extractTar(tar.NewReader(gr), archiveDir, root)
 	}))
+	return obj.Val(), nil
+}
+
+type zipBinding struct {
+	b *installBinding
+}
+
+func (z zipBinding) Extract(src values.Value) (values.Value, *values.Error) {
+	srcObj, ok := src.ToObject()
+	if !ok {
+		return values.Nil, values.NewError("expected readable i/o object as argument to zip.extract")
+	}
+	// TODO: should have a better interface system so doesn't need to use bindings
+	r, ok := srcObj.Binding.(io.Reader)
+	if !ok {
+		return values.Nil, values.NewError("expected readable i/o object as argument to zip.extract")
+	}
+
+	obj := values.NewObject()
+
+	var archiveDir string
+	obj.Put("from_archive_dir", values.Of(func(dst values.Value) (values.Value, error) {
+		dir, ok := dst.ToString()
+		if !ok {
+			return values.Nil, values.FmtTypeError("zip.extract(...).from_archive_dir", values.KindString)
+		}
+		archiveDir = string(dir)
+		return obj.Val(), nil
+	}))
+
+	obj.Put("to", values.Of(func(dst values.Value) error {
+		dstStr, ok := dst.ToString()
+		if !ok {
+			return values.FmtTypeError("zip.extract(...).to", values.KindString)
+		}
+
+		contents, err := io.ReadAll(r)
+		if err != nil {
+			return err
+		}
+
+		zr, err := zip.NewReader(bytes.NewReader(contents), int64(len(contents)))
+		if err != nil {
+			return err
+		}
+
+		resolvedDst := filepath.Join(".", string(dstStr))
+		root, err := z.b.RootDir.OpenRoot(resolvedDst)
+		if err != nil {
+			return err
+		}
+
+		return extractZip(zr, archiveDir, root)
+	}))
+
 	return obj.Val(), nil
 }
 
@@ -164,4 +238,36 @@ func extractTarFile(r io.Reader, dst *os.Root, name string, mode os.FileMode) er
 		return err
 	}
 	return f.Close()
+}
+
+func extractZip(zr *zip.Reader, archiveRoot string, dst *os.Root) error {
+	for _, file := range zr.File {
+		target, err := filepath.Rel(filepath.Join(".", archiveRoot), file.Name)
+		if err != nil {
+			return err
+		}
+
+		if file.FileInfo().IsDir() {
+			if err := dst.MkdirAll(target, file.Mode()); err != nil {
+				return err
+			}
+			continue
+		}
+
+		r, err := file.Open()
+		if err != nil {
+			return err
+		}
+
+		if err := extractTarFile(r, dst, target, file.Mode()); err != nil {
+			r.Close()
+			return err
+		}
+
+		if err := r.Close(); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
