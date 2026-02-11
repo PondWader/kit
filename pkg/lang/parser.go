@@ -169,20 +169,22 @@ func (p *parser) parseIf() (n NodeIf, err error) {
 	}
 
 	// Parse else if it exists
-	next, err = p.l.Next()
+	next, err = p.nextAfterWhiteSpace()
 	if err != nil {
 		return n, err
 	} else if next.Kind == tokens.TokenKindElse {
-		if next.Kind == tokens.TokenKindLeftBrace {
+		next, err = p.nextAfterWhiteSpace()
+
+		switch next.Kind {
+		case tokens.TokenKindLeftBrace:
 			n.Else, err = p.parseBlock()
-			if err != nil {
-				return n, err
-			}
-		} else {
+		case tokens.TokenKindIf:
+			n.Else, err = p.parseIf()
+		default:
 			n.Else, err = p.parseExpressionFromToken(next)
-			if err != nil {
-				return n, err
-			}
+		}
+		if err != nil {
+			return n, err
 		}
 	} else {
 		p.l.Unread(next)
