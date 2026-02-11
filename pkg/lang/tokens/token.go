@@ -111,10 +111,7 @@ const (
 	TokenKindIncrement
 	TokenKindDecrement
 	TokenKindNotEquals
-	TokenKindLooseEquals
-	TokenKindLooseNotEquals
-	TokenKindStrictEquals
-	TokenKindStrictNotEquals
+	TokenKindEquals
 	TokenKindLessThan
 	TokenKindLessThanOrEqual
 	TokenKindGreaterThan
@@ -360,14 +357,8 @@ func (tk TokenKind) String() string {
 		return `"--"`
 	case TokenKindNotEquals:
 		return `"!="`
-	case TokenKindLooseEquals:
+	case TokenKindEquals:
 		return `"=="`
-	case TokenKindLooseNotEquals:
-		return `"!="`
-	case TokenKindStrictEquals:
-		return `"==="`
-	case TokenKindStrictNotEquals:
-		return `"!=="`
 	case TokenKindLessThan:
 		return `"<"`
 	case TokenKindLessThanOrEqual:

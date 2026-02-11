@@ -266,3 +266,34 @@ func (n NodeReturn) Eval(e *Environment) (values.Value, *values.Error) {
 func (n NodeReturn) String() string {
 	return "return " + n.Val.String()
 }
+
+type NodeIf struct {
+	Condition Node
+	Body      Node
+	Else      Node
+}
+
+func (n NodeIf) Eval(e *Environment) (values.Value, *values.Error) {
+	v, err := n.Condition.Eval(e)
+	if err != nil {
+		return values.Nil, err
+	}
+	b, ok := v.ToBool()
+	if !ok {
+		return values.Nil, values.NewError("expected boolean type for if condition")
+	}
+	if b {
+		return n.Body.Eval(e)
+	} else if n.Else != nil {
+		return n.Else.Eval(e)
+	}
+	return values.Nil, nil
+}
+
+func (n NodeIf) String() string {
+	s := "if " + n.Condition.String() + " " + n.Body.String()
+	if n.Else != nil {
+		s += " else " + n.Else.String()
+	}
+	return s
+}

@@ -99,12 +99,10 @@ func (l *Lexer) Next() (Token, error) {
 
 var textToSymbolToken = map[string]TokenKind{
 	"=":    TokenKindAssign,
-	"==":   TokenKindLooseEquals,
-	"===":  TokenKindStrictEquals,
+	"==":   TokenKindEquals,
 	"->":   TokenKindArrow,
 	"!":    TokenKindLogicalNot,
-	"!=":   TokenKindLooseNotEquals,
-	"!==":  TokenKindStrictNotEquals,
+	"!=":   TokenKindNotEquals,
 	"<":    TokenKindLessThan,
 	"<=":   TokenKindLessThanOrEqual,
 	"<<":   TokenKindLeftShift,
@@ -409,6 +407,8 @@ func (l *Lexer) AddLine() {
 	l.currentLine++
 }
 
+// Unreads a token. The next call to [Lexer.Next] will read the unread token.
+// This cannot be called twice in a row without a call to [Lexer.Next] in between so be careful with usage.
 func (l *Lexer) Unread(token Token) {
 	if l.nextTokenAvailable {
 		panic("a token has already been unread that has not been consumed")
@@ -416,6 +416,15 @@ func (l *Lexer) Unread(token Token) {
 	l.nextTokenAvailable = true
 	l.nextToken = token
 	l.State--
+}
+
+func (l *Lexer) Peek() (Token, error) {
+	tok, err := l.Next()
+	if err != nil {
+		return tok, err
+	}
+	l.Unread(tok)
+	return tok, err
 }
 
 // scanSingleLineComment scans a single-line comment starting with //

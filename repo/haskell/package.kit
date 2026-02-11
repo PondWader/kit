@@ -1,0 +1,29 @@
+export name = "haskell"
+
+export fn install(version) {
+    distro = ""
+    if sys.OS == "linux" && sys.ARCH == "amd64" {
+        distro = "x86_64-deb12-linux"
+    } else if sys.OS == "linux" && sys.ARCH == "arm64" {
+        distro = "aarch64-deb12-linux"
+    } else if sys.OS == "darwin" && sys.ARCH == "amd64" {
+        distro = "x86_64-apple-darwin"
+    } else if sys.OS == "darwin" && sys.ARCH == "arm64" {
+        distro = "aarch64-apple-darwin"
+    }
+
+    resp = fetch("https://downloads.haskell.org/~ghc/${version}/ghc-${version}-${distro}.tar.xz")
+    tar.xz.extract(resp).to("/")
+
+    // Setup ghci script
+    fs.write("/bin/ghci", "#!/bin/bash\nexec ${fs.root}/bin/ghc --interactive \"$@\"")
+
+    link_bin_dir("/bin")
+}
+
+export fn versions() {
+    return fetch("https://gitlab.haskell.org/api/v4/projects/1/repository/tags?search=release")
+        .json()
+        .filter(tag -> tag.name.ends_with("-release"))
+        .map(tag -> tag.name.remove_prefix("ghc-").remove_suffix("-release"))
+}

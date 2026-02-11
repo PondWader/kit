@@ -119,7 +119,15 @@
       "patterns": [
         {
           "name": "keyword.control.kit",
-          "match": "\\b(export|return)\\b"
+          "match": "\\b(if|else|for|while|range|return|export|import|as)\\b"
+        },
+        {
+          "name": "storage.type.kit",
+          "match": "\\b(var|struct)\\b"
+        },
+        {
+          "name": "constant.language.kit",
+          "match": "\\b(true|false)\\b"
         }
       ]
     },

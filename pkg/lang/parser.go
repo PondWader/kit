@@ -114,6 +114,8 @@ func (p *parser) parseStatementFromToken(tok tokens.Token) (n Node, err error) {
 		return p.parseFunction()
 	case tokens.TokenKindReturn:
 		return p.parseReturn()
+	case tokens.TokenKindIf:
+		return p.parseIf()
 	default:
 		return p.parseExpressionFromToken(tok)
 	}
@@ -143,6 +145,49 @@ func (p *parser) parseExport() (n NodeExport, err error) {
 func (p *parser) parseReturn() (n NodeReturn, err error) {
 	n.Val, err = p.parseExpression()
 	return n, err
+}
+
+func (p *parser) parseIf() (n NodeIf, err error) {
+	n.Condition, err = p.parseExpression()
+	if err != nil {
+		return
+	}
+
+	next, err := p.nextAfterWhiteSpace()
+	if err != nil {
+		return n, err
+	} else if next.Kind == tokens.TokenKindLeftBrace {
+		n.Body, err = p.parseBlock()
+		if err != nil {
+			return n, err
+		}
+	} else {
+		n.Body, err = p.parseExpressionFromToken(next)
+		if err != nil {
+			return n, err
+		}
+	}
+
+	// Parse else if it exists
+	next, err = p.l.Next()
+	if err != nil {
+		return n, err
+	} else if next.Kind == tokens.TokenKindElse {
+		if next.Kind == tokens.TokenKindLeftBrace {
+			n.Else, err = p.parseBlock()
+			if err != nil {
+				return n, err
+			}
+		} else {
+			n.Else, err = p.parseExpressionFromToken(next)
+			if err != nil {
+				return n, err
+			}
+		}
+	} else {
+		p.l.Unread(next)
+	}
+	return
 }
 
 func (p *parser) parseExpression() (Node, error) {
