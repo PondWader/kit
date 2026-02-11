@@ -4,16 +4,13 @@ import (
 	"encoding/json"
 	"io"
 	"net/http"
-	"time"
 
 	"github.com/PondWader/kit/pkg/lang/values"
 )
 
 var Fetch = values.Of(fetch)
 
-var client = &http.Client{
-	Timeout: time.Minute,
-}
+var client = &http.Client{}
 
 func fetch(url values.Value) (values.Value, error) {
 	urlStr, ok := url.ToString()
