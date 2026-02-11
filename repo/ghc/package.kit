@@ -19,7 +19,7 @@ export fn install(version) {
 
     // Setup ghci script
     fs.file("/bin/ghci").create_with_perms(0744)
-        .write_and_close("#!/bin/bash\nexec ${fs.root}/bin/ghc --interactive \"$@\"")
+        .write_and_close("#!/bin/bash\nexec ${install.mount_dir}/bin/ghc --interactive \"$@\"")
 
     link_bin_dir("/bin")
 }

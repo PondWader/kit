@@ -6,6 +6,7 @@ import (
 	"bytes"
 	"compress/gzip"
 	"io"
+	"unsafe"
 
 	"io/fs"
 	"os"
@@ -46,10 +47,58 @@ func (b *installBinding) CreateZip() *values.Object {
 	return values.ObjectFromStruct(zipBinding{b: b})
 }
 
+func (b *installBinding) CreateFs() *values.Object {
+	o := values.NewObject()
+	o.Put("file", values.Of(func(path values.Value) (values.Value, *values.Error) {
+		pathStr, ok := path.ToString()
+		if !ok {
+			return values.Nil, values.FmtTypeError("fs.file", values.KindString)
+		}
+		return b.createFileBuilder(string(pathStr)), nil
+	}))
+	return o
+}
+
+func (b *installBinding) createFileBuilder(path string) values.Value {
+	obj := values.NewObject()
+	resolvedPath := filepath.Join(".", path)
+
+	var fh *os.File
+
+	obj.Put("create_with_perms", values.Of(func(mode values.Value) (values.Value, error) {
+		perm, ok := mode.ToNumber()
+		if !ok {
+			return values.Nil, values.FmtTypeError("fs.file(...).create_with_perms", values.KindNumber)
+		}
+		f, err := b.RootDir.OpenFile(resolvedPath, os.O_RDWR|os.O_CREATE|os.O_TRUNC, fs.FileMode(perm))
+		if err != nil {
+			return values.Nil, err
+		}
+		fh = f
+		return obj.Val(), nil
+	}))
+
+	obj.Put("write_and_close", values.Of(func(content values.Value) error {
+		contentStr, ok := content.ToString()
+		if !ok {
+			return values.FmtTypeError("fs.file(...).write_and_close", values.KindString)
+		}
+		contentBytes := unsafe.Slice(unsafe.StringData(contentStr.String()), len(contentStr.String()))
+		if _, err := fh.Write(contentBytes); err != nil {
+			fh.Close()
+			return err
+		}
+		return fh.Close()
+	}))
+
+	return obj.Val()
+}
+
 func (b *installBinding) Load(env *lang.Environment) {
 	env.Set("sys", b.CreateSys().Val())
 	env.Set("tar", b.CreateTar().Val())
 	env.Set("zip", b.CreateZip().Val())
+	env.Set("fs", b.CreateFs().Val())
 	env.Set("link_bin_dir", values.Of(b.LinkBinDir))
 }
 
