@@ -1,4 +1,4 @@
-export name = "haskell"
+export name = "ghc"
 
 export fn install(version) {
     distro = ""
@@ -10,13 +10,16 @@ export fn install(version) {
         distro = "x86_64-apple-darwin"
     } else if sys.OS == "darwin" && sys.ARCH == "arm64" {
         distro = "aarch64-apple-darwin"
+    } else {
+        // TODO: error?
     }
 
     resp = fetch("https://downloads.haskell.org/~ghc/${version}/ghc-${version}-${distro}.tar.xz")
     tar.xz.extract(resp).to("/")
 
     // Setup ghci script
-    fs.write("/bin/ghci", "#!/bin/bash\nexec ${fs.root}/bin/ghc --interactive \"$@\"")
+    fs.file("/bin/ghci").create_with_perms(0744)
+        .write_and_close("#!/bin/bash\nexec ${fs.root}/bin/ghc --interactive \"$@\"")
 
     link_bin_dir("/bin")
 }
