@@ -1,0 +1,28 @@
+export name = "haskell-language-server"
+
+export fn install(version) {
+    distro = ""
+    if sys.OS == "linux" && sys.ARCH == "amd64" {
+        distro = "x86_64-linux-deb12"
+    } else if sys.OS == "linux" && sys.ARCH == "arm64" {
+        distro = "aarch64-linux-ubuntu2204"
+    } else if sys.OS == "darwin" && sys.ARCH == "amd64" {
+        distro = "x86_64-apple-darwin"
+    } else if sys.OS == "darwin" && sys.ARCH == "arm64" {
+        distro = "aarch64-apple-darwin"
+    } else {
+        // TODO: error?
+    }
+
+    name = "haskell-language-server-${version}-${distro}"
+    resp = fetch("https://github.com/haskell/haskell-language-server/releases/download/${version}/${name}.tar.xz")
+    tar.xz.extract(resp).skipping_base_dir().to("/")
+
+    link_bin_dir("/bin")
+}
+
+export fn versions() {
+    return fetch("https://api.github.com/repos/haskell/haskell-language-server/releases")
+        .json()
+        .map(release -> release.tag_name)
+}
