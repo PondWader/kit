@@ -61,10 +61,14 @@ func (m *Mount) Enable(dir string) error {
 			if err := m.k.Home.Remove(linkPath); err != nil && !errors.Is(err, os.ErrNotExist) {
 				return err
 			}
-			if err := m.k.Home.Symlink(filepath.Join(dir, a.Data["target"]), linkPath); err != nil {
+			target := filepath.Join(dir, a.Data["target"])
+			relTarget, err := filepath.Rel(filepath.Dir(linkPath), target)
+			if err != nil {
 				return err
 			}
-			m.k.t.Println("linked", linkPath, filepath.Join(m.k.Home.BinDir(), a.Data["linkName"]))
+			if err := m.k.Home.Symlink(relTarget, linkPath); err != nil {
+				return err
+			}
 		default:
 			return errors.New("unknown action \"" + a.Action + "\"")
 		}
