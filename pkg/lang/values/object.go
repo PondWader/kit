@@ -58,7 +58,7 @@ func ObjectFromStruct(v any) *Object {
 
 	// Ensure it's a struct
 	if val.Kind() != reflect.Struct {
-		return obj
+		panic("expected struct in ObjectFromStruct but got " + val.Kind().String())
 	}
 
 	typ := val.Type()
@@ -73,18 +73,14 @@ func ObjectFromStruct(v any) *Object {
 			continue
 		}
 
-		// Convert field name to camelCase if not an acronym
-		fieldName := field.Name
-		if len(fieldName) == 1 || (unicode.IsUpper(rune(fieldName[0])) && !unicode.IsUpper(rune(fieldName[1]))) {
-			fieldName = string(unicode.ToLower(rune(fieldName[0]))) + fieldName[1:]
-		}
+		fieldName := pascalToSnakeCase(field.Name)
 
 		if fieldValue.Kind() == reflect.Struct {
 			// Convert the struct to an object
 			obj.Put(fieldName, ObjectFromStruct(fieldValue.Interface()).Val())
 		} else {
 			// Convert field value to Value and add to object
-			obj.Put(fieldName, Value{fieldValue.Interface()})
+			obj.Put(fieldName, Of(fieldValue.Interface()))
 		}
 	}
 
@@ -98,15 +94,31 @@ func ObjectFromStruct(v any) *Object {
 			continue
 		}
 
-		// Convert method name to camelCase if not an acronym
-		methodName := method.Name
-		if len(methodName) == 1 || (unicode.IsUpper(rune(methodName[0])) && !unicode.IsUpper(rune(methodName[1]))) {
-			methodName = string(unicode.ToLower(rune(methodName[0]))) + methodName[1:]
-		}
+		methodName := pascalToSnakeCase(method.Name)
 
 		// Wrap method as Function and add to object
 		obj.Put(methodName, Value{Function{methodValue}})
 	}
 
 	return obj
+}
+
+func pascalToSnakeCase(s string) string {
+	runes := []rune(s)
+	var result []rune
+	for i, r := range runes {
+		if unicode.IsUpper(r) {
+			if i > 0 {
+				if unicode.IsLower(runes[i-1]) {
+					result = append(result, '_')
+				} else if unicode.IsUpper(runes[i-1]) && i+1 < len(runes) && unicode.IsLower(runes[i+1]) {
+					result = append(result, '_')
+				}
+			}
+			result = append(result, unicode.ToLower(r))
+		} else {
+			result = append(result, r)
+		}
+	}
+	return string(result)
 }
