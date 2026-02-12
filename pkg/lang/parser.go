@@ -116,6 +116,8 @@ func (p *parser) parseStatementFromToken(tok tokens.Token) (n Node, err error) {
 		return p.parseReturn()
 	case tokens.TokenKindIf:
 		return p.parseIf()
+	case tokens.TokenKindFor:
+		return p.parseFor()
 	default:
 		return p.parseExpressionFromToken(tok)
 	}
@@ -189,6 +191,33 @@ func (p *parser) parseIf() (n NodeIf, err error) {
 	} else {
 		p.l.Unread(next)
 	}
+	return
+}
+
+func (p *parser) parseFor() (n NodeForInLoop, err error) {
+	ident, err := p.expectToken(tokens.TokenKindIdentifier)
+	if err != nil {
+		return n, err
+	}
+	if _, err = p.expectToken(tokens.TokenKindIn); err != nil {
+		return n, err
+	}
+	n.Var = ident.Literal
+
+	iter, err := p.parseExpression()
+	if err != nil {
+		return n, err
+	}
+	n.Iterable = iter
+
+	if _, err = p.expectToken(tokens.TokenKindLeftBrace); err != nil {
+		return n, err
+	}
+	b, err := p.parseBlock()
+	if err != nil {
+		return n, err
+	}
+	n.Body = b
 	return
 }
 

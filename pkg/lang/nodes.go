@@ -443,3 +443,34 @@ func (n NodeLogicalOp) Eval(e *Environment) (values.Value, *values.Error) {
 func (n NodeLogicalOp) String() string {
 	return n.Left.String() + " " + n.Op.String() + " " + n.Right.String()
 }
+
+type NodeForInLoop struct {
+	Var      string
+	Iterable Node
+	Body     Node
+}
+
+func (n NodeForInLoop) Eval(e *Environment) (values.Value, *values.Error) {
+	v, err := n.Iterable.Eval(e)
+	if err != nil {
+		return values.Nil, err
+	}
+
+	l, ok := v.ToList()
+	if !ok {
+		return values.Nil, values.FmtTypeError("for "+n.Var+" in ?", values.KindList)
+	}
+
+	for _, v := range l.AsSlice() {
+		scope := e.NewChild()
+		scope.SetScoped(n.Var, v)
+		if _, err = n.Body.Eval(scope); err != nil {
+			return values.Nil, err
+		}
+	}
+	return values.Nil, nil
+}
+
+func (n NodeForInLoop) String() string {
+	return "for " + n.Var + " in " + n.Iterable.String() + " " + n.Body.String()
+}
