@@ -62,12 +62,22 @@ func (b *installBinding) CreateFs() *values.Object {
 		}
 		return b.createFileBuilder(string(pathStr)), nil
 	}))
+	o.Put("dir", values.Of(func(path values.Value) (values.Value, *values.Error) {
+		pathStr, ok := path.ToString()
+		if !ok {
+			return values.Nil, values.FmtTypeError("fs.dir", values.KindString)
+		}
+		return b.createDirBuilder(string(pathStr)), nil
+	}))
 	return o
 }
 
 func (b *installBinding) createFileBuilder(path string) values.Value {
 	obj := values.NewObject()
 	resolvedPath := filepath.Join(".", path)
+
+	obj.Put("name", values.Of(filepath.Base(path)))
+	obj.Put("path", values.Of(path))
 
 	var fh *os.File
 
@@ -95,6 +105,34 @@ func (b *installBinding) createFileBuilder(path string) values.Value {
 			return err
 		}
 		return fh.Close()
+	}))
+
+	obj.Put("symlink", values.Of(func(target values.Value) error {
+		targetStr, ok := target.ToString()
+		if !ok {
+			return values.FmtTypeError("fs.file(...).symlink", values.KindString)
+		}
+		return os.Symlink(string(targetStr), filepath.Join(b.RootDir.Name(), resolvedPath))
+	}))
+
+	return obj.Val()
+}
+
+func (b *installBinding) createDirBuilder(path string) values.Value {
+	obj := values.NewObject()
+	resolvedPath := filepath.Join(".", path)
+
+	obj.Put("read_entries", values.Of(func() (*values.List, error) {
+		entries, err := b.RootDir.FS().(fs.ReadDirFS).ReadDir(resolvedPath)
+		if err != nil {
+			return nil, err
+		}
+		list := values.NewList(len(entries))
+		for i, entry := range entries {
+			entryPath := filepath.Join(path, entry.Name())
+			list.Set(i, b.createFileBuilder(entryPath))
+		}
+		return list, nil
 	}))
 
 	return obj.Val()

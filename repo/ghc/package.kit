@@ -22,6 +22,15 @@ export fn install(version) {
     fs.file("/bin/ghci").create_with_perms(0o744)
         .write_and_close("#!/bin/bash\nexec ${install.mount_dir}/bin/ghc --interactive \"$@\"")
 
+    // Create symlinks to all versions
+    bin_entries = fs.dir("/bin").read_entries()
+    for entry in bin_entries {
+        if entry.name.ends_with(version) {
+            link_path = entry.path.remove_suffix("-${version}")
+            fs.file(link_path).symlink("./${entry.name}")
+        }
+    }
+
     link_bin_dir("/bin")
 }
 
