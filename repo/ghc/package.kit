@@ -14,8 +14,9 @@ export fn install(version) {
         // TODO: error?
     }
 
-    resp = fetch("https://downloads.haskell.org/~ghc/${version}/ghc-${version}-${distro}.tar.xz")
-    tar.xz.extract(resp).to("/")
+    name = "ghc-${version}-${distro}"
+    resp = fetch("https://downloads.haskell.org/~ghc/${version}/${name}.tar.xz")
+    tar.xz.extract(resp).skipping_base_dir().to("/")
 
     // Setup ghci script
     fs.file("/bin/ghci").create_with_perms(0o744)

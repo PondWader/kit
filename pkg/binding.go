@@ -6,6 +6,7 @@ import (
 	"bytes"
 	"compress/gzip"
 	"io"
+	"strings"
 	"unsafe"
 
 	"io/fs"
@@ -168,6 +169,7 @@ func (tl tarLayer) Extract(src values.Value) (values.Value, *values.Error) {
 	obj := values.NewObject()
 
 	var archiveDir string
+	var skipBaseDir bool
 	obj.Put("from_archive_dir", values.Of(func(dst values.Value) (values.Value, error) {
 		dir, ok := dst.ToString()
 		if !ok {
@@ -175,6 +177,11 @@ func (tl tarLayer) Extract(src values.Value) (values.Value, *values.Error) {
 		}
 		archiveDir = string(dir)
 		return obj.Val(), nil
+	}))
+
+	obj.Put("skipping_base_dir", values.Of(func() values.Value {
+		skipBaseDir = true
+		return obj.Val()
 	}))
 
 	obj.Put("to", values.Of(func(dst values.Value) error {
@@ -193,7 +200,7 @@ func (tl tarLayer) Extract(src values.Value) (values.Value, *values.Error) {
 			return err
 		}
 
-		return extractTar(tar.NewReader(gr), archiveDir, root)
+		return extractTar(tar.NewReader(gr), archiveDir, skipBaseDir, root)
 	}))
 	return obj.Val(), nil
 }
@@ -253,7 +260,7 @@ func (z zipBinding) Extract(src values.Value) (values.Value, *values.Error) {
 	return obj.Val(), nil
 }
 
-func extractTar(tr *tar.Reader, archiveRoot string, dst *os.Root) error {
+func extractTar(tr *tar.Reader, archiveRoot string, skipBaseDir bool, dst *os.Root) error {
 	for {
 		hdr, err := tr.Next()
 		if err == io.EOF {
@@ -263,7 +270,16 @@ func extractTar(tr *tar.Reader, archiveRoot string, dst *os.Root) error {
 			return err
 		}
 
-		target, err := filepath.Rel(filepath.Join(".", archiveRoot), hdr.Name)
+		name := hdr.Name
+		if skipBaseDir {
+			_, after, found := strings.Cut(name, "/")
+			if !found || after == "" {
+				continue
+			}
+			name = after
+		}
+
+		target, err := filepath.Rel(filepath.Join(".", archiveRoot), name)
 		if err != nil {
 			return err
 		}
