@@ -119,7 +119,7 @@
       "patterns": [
         {
           "name": "keyword.control.kit",
-          "match": "\\b(if|else|for|while|range|return|export|import|as)\\b"
+          "match": "\\b(if|else|for|while|range|return|export|import|as|in)\\b"
         },
         {
           "name": "storage.type.kit",
