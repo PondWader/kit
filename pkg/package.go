@@ -120,7 +120,7 @@ func (p *Package) Install(version string) error {
 	mountDir := filepath.Join(pkgDir, "v"+version)
 
 	// Run install function
-	sb := &installBinding{RootDir: root, Install: &mountBinding{MountDir: mountDir}}
+	sb := &installBinding{RootDir: root, Install: &mountBinding{MountDir: filepath.Join(p.k.Home.Name(), mountDir)}}
 	sb.Load(env)
 
 	_, cErr := installFn.Call(values.String(version).Val())
