@@ -58,7 +58,7 @@ func (m *Mount) Enable(dir string) error {
 		switch a.Action {
 		case "link_bin":
 			linkPath := filepath.Join(m.k.Home.BinDir(), a.Data["linkName"])
-			if err := m.k.Home.Remove(linkPath); err != nil && !errors.Is(os.ErrNotExist, err) {
+			if err := m.k.Home.Remove(linkPath); err != nil && !errors.Is(err, os.ErrNotExist) {
 				return err
 			}
 			if err := m.k.Home.Symlink(filepath.Join(dir, a.Data["target"]), linkPath); err != nil {
