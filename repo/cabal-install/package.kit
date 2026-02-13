@@ -1,0 +1,29 @@
+export name = "cabal-install"
+
+export fn install(version) {
+    distro = ""
+    if sys.OS == "linux" && sys.ARCH == "amd64" {
+        distro = "x86_64-linux-deb12"
+    } else if sys.OS == "linux" && sys.ARCH == "arm64" {
+        distro = "aarch64-linux-deb12"
+    } else if sys.OS == "darwin" && sys.ARCH == "amd64" {
+        distro = "x86_64-darwin"
+    } else if sys.OS == "darwin" && sys.ARCH == "arm64" {
+        distro = "aarch64-darwin"
+    } else {
+        // TODO: error?
+    }
+
+    name = "cabal-install-${version}-${distro}"
+    resp = fetch("https://downloads.haskell.org/~cabal/cabal-install-${version}/${name}.tar.xz")
+    tar.xz.extract(resp).to("/")
+
+    link_bin_file("/cabal")
+}
+
+export fn versions() {
+    return fetch("https://api.github.com/repos/haskell/cabal/releases")
+        .json()
+        .filter(release -> release.tag_name.starts_with("cabal-install-v"))
+        .map(release -> release.tag_name.remove_prefix("cabal-install-v"))
+}

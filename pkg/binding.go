@@ -144,6 +144,7 @@ func (b *installBinding) Load(env *lang.Environment) {
 	env.Set("zip", b.CreateZip().Val())
 	env.Set("fs", b.CreateFs().Val())
 	env.Set("link_bin_dir", values.Of(b.LinkBinDir))
+	env.Set("link_bin_file", values.Of(b.LinkBinFile))
 	if b.Install != nil {
 		env.Set("install", values.ObjectFromStruct(b.Install).Val())
 	}
@@ -168,6 +169,21 @@ func (b *installBinding) LinkBinDir(dirV values.Value) error {
 			}
 		}
 		return nil
+	})
+
+	return nil
+}
+
+func (b *installBinding) LinkBinFile(pathV values.Value) error {
+	path, ok := pathV.ToString()
+	if !ok {
+		return values.FmtTypeError("link_bin_file", values.KindString)
+	}
+
+	relPath := filepath.Join(".", string(path))
+
+	b.mountSetup = append(b.mountSetup, func(m *Mount) error {
+		return m.LinkBin(relPath, filepath.Base(path.String()))
 	})
 
 	return nil

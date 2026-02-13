@@ -39,6 +39,14 @@ func (s String) Split(sep Value) (Value, *Error) {
 	return Of(strings.Split(string(s), sepStr.String())), nil
 }
 
+func (s String) StartsWith(prefix Value) (Value, *Error) {
+	suffixStr, ok := prefix.ToString()
+	if !ok {
+		return Nil, FmtTypeError("starts_with", KindString)
+	}
+	return Of(strings.HasPrefix(string(s), suffixStr.String())), nil
+}
+
 func (s String) EndsWith(suffix Value) (Value, *Error) {
 	suffixStr, ok := suffix.ToString()
 	if !ok {
@@ -73,6 +81,8 @@ func (s String) Get(key string) Value {
 		return Of(s.CutSuffixAfter)
 	case "split":
 		return Of(s.Split)
+	case "starts_with":
+		return Of(s.StartsWith)
 	case "ends_with":
 		return Of(s.EndsWith)
 	case "remove_prefix":
