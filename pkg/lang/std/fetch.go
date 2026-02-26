@@ -29,6 +29,10 @@ func fetch(url values.Value) (values.Value, error) {
 		return values.Nil, err
 	}
 
+	if res.StatusCode >= 300 {
+		return values.Nil, values.NewError("received error status: " + res.Status)
+	}
+
 	resp := PendingFetch{req, res}
 
 	obj := values.ObjectFromStruct(resp)
@@ -43,10 +47,6 @@ type PendingFetch struct {
 func (f PendingFetch) Text() (values.Value, error) {
 	defer f.res.Body.Close()
 
-	if f.res.StatusCode >= 300 {
-		return values.Nil, values.NewError("received error status: " + f.res.Status)
-	}
-
 	body, err := io.ReadAll(f.res.Body)
 	if err != nil {
 		return values.Nil, err
@@ -57,10 +57,6 @@ func (f PendingFetch) Text() (values.Value, error) {
 
 func (f PendingFetch) Json() (values.Value, error) {
 	defer f.res.Body.Close()
-
-	if f.res.StatusCode >= 300 {
-		return values.Nil, values.NewError("received error status: " + f.res.Status)
-	}
 
 	dec := json.NewDecoder(f.res.Body)
 	var parsed any
