@@ -95,6 +95,8 @@ var InstallCommand = Command{
 				printError(errors.New("could not match version: " + versionSpec))
 				os.Exit(1)
 			}
+		} else {
+			version = versionSpec
 		}
 
 		if err = pkg.Install(version); err != nil {
