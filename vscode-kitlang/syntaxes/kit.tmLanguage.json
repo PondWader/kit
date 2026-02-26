@@ -36,6 +36,9 @@
       "include": "#function-call"
     },
     {
+      "include": "#type-annotation"
+    },
+    {
       "include": "#identifiers"
     }
   ],
@@ -111,6 +114,9 @@
           "include": "#function-call"
         },
         {
+          "include": "#type-annotation"
+        },
+        {
           "include": "#identifiers"
         }
       ]
@@ -119,7 +125,7 @@
       "patterns": [
         {
           "name": "keyword.control.kit",
-          "match": "\\b(if|else|for|while|range|return|export|import|as|in)\\b"
+          "match": "\\b(if|else|for|while|range|return|export|import|as|in|throw)\\b"
         },
         {
           "name": "storage.type.kit",
@@ -166,6 +172,10 @@
     "punctuation-accessor": {
       "name": "punctuation.accessor.kit",
       "match": "\\."
+    },
+    "type-annotation": {
+      "match": "(?<=:\\s{0,10})\\b(string|number|bool)\\b",
+      "name": "support.type.primitive.kit"
     },
     "identifiers": {
       "name": "variable.other.kit",

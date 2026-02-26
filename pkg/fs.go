@@ -133,6 +133,10 @@ func (kfs KitFS) BinDir() string {
 	return "bin"
 }
 
+func (kfs KitFS) LibDir() string {
+	return "lib"
+}
+
 func (kfs KitFS) ReadDir(name string) ([]os.DirEntry, error) {
 	root := kfs.FS().(fs.ReadDirFS)
 	return root.ReadDir(name)

@@ -10,3 +10,6 @@ var Repositories string
 
 //go:embed migrations/*
 var Migrations embed.FS
+
+//go:embed lib/*
+var Lib embed.FS

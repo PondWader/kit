@@ -1,0 +1,110 @@
+export fn repository(source: string) {
+    split = source.split(" ")
+    if split.length() < 3 {
+        throw error("invalid debian repository definition")
+    }
+
+    return {
+        url = split[0]
+        suite = split[1]
+        components = split.slice(2)
+    
+        fn packages() {
+            package_lists = components.map(component -> load_component_packages({
+                url = url
+                suite = suite
+                component = component
+                arch = deb_arch(sys.ARCH)
+            }))
+
+            return {
+                lists = package_lists
+
+                fn find(name) {
+                    for packages in lists {
+                        for pkg in packages {
+                            if pkg.name == name {
+                                return pkg
+                            }
+                        }
+                    }
+
+                    throw error("could not find package \"${name}\" in \"${source}\"")
+                }
+            }
+        }
+    }
+}
+
+fn deb_arch(arch) {
+    if arch == "amd64" {
+        return "amd64"
+    } else if arch == "arm64" {
+        return "arm64"
+    }
+    return arch
+}
+
+fn load_component_packages({ url, suite, arch }) {
+    index_url = "${url}/dists/${suite}/${a.component}/binary-${arch}/Packages.xz"
+    index = xz(fetch(index_url)).text()
+
+    return index
+        .split("\n\n")
+        .map(raw -> package_from_stanza({
+            raw = raw
+            source = args.url
+            component = args.component
+        }))
+        .filter(pkg -> pkg.name != "")
+}
+
+fn package_from_stanza(args) {
+    name = ""
+    version = ""
+    filename = ""
+    architecture = ""
+    sha256 = ""
+
+    for line in args.raw.split("\n") {
+        if line.starts_with("Package: ") {
+            name = line.remove_prefix("Package: ").trim_whitespace()
+        } else if line.starts_with("Version: ") {
+            version = line.remove_prefix("Version: ").trim_whitespace()
+        } else if line.starts_with("Filename: ") {
+            filename = line.remove_prefix("Filename: ").trim_whitespace()
+        } else if line.starts_with("Architecture: ") {
+            architecture = line.remove_prefix("Architecture: ").trim_whitespace()
+        } else if line.starts_with("SHA256: ") {
+            sha256 = line.remove_prefix("SHA256: ").trim_whitespace()
+        }
+    }
+
+    return Package({
+        name = name
+        version = version
+        filename = filename
+        architecture = architecture
+        sha256 = sha256
+        source = args.source
+        component = args.component
+    })
+}
+
+fn Package(spec) {
+    return {
+        name = spec.name
+        version = spec.version
+        architecture = spec.architecture
+        filename = spec.filename
+        sha256 = spec.sha256
+        component = spec.component
+
+        fn install() {
+            deb_url = "${spec.source}/${spec.filename.remove_prefix("/")}"
+            data_tar = ar(fetch(deb_url)).file("data.tar.xz")
+            tar.xz.extract(data_tar).to("/")
+            link_unix_fs()
+        }
+    }
+}
