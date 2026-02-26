@@ -3,6 +3,13 @@
 GO_VERSION="1.26.0"
 BIN_PATH="/usr/local/bin/kit"
 
+while getopts "o:" opt; do
+    case $opt in
+        o) BIN_PATH="$OPTARG" ;;
+        *) echo "Usage: $0 [-o output_path]"; exit 1 ;;
+    esac
+done
+
 set -e
 
 install_dir=/tmp/kitup-install-$(date +%s)
