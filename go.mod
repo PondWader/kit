@@ -1,6 +1,6 @@
 module github.com/PondWader/kit
 
-go 1.25.5
+go 1.26.0
 
 require (
 	github.com/go-git/go-git/v6 v6.0.0-20260114124804-a8db3a6585a6
