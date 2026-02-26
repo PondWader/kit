@@ -3,9 +3,9 @@ export name = "haskell-language-server"
 export fn install(version) {
     distro = ""
     if sys.OS == "linux" && sys.ARCH == "amd64" {
-        distro = "x86_64-linux-deb12"
+        distro = "x86_64-linux-unknown"
     } else if sys.OS == "linux" && sys.ARCH == "arm64" {
-        distro = "aarch64-linux-ubuntu2204"
+        distro = "aarch64-linux-unknown"
     } else if sys.OS == "darwin" && sys.ARCH == "amd64" {
         distro = "x86_64-apple-darwin"
     } else if sys.OS == "darwin" && sys.ARCH == "arm64" {
