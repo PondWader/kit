@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/PondWader/kit/pkg/lang/std"
 	"github.com/PondWader/kit/pkg/lang/values"
 )
 
@@ -361,6 +362,38 @@ func (n NodeReturn) Eval(e *Environment) (values.Value, *values.Error) {
 
 func (n NodeReturn) String() string {
 	return "return " + n.Val.String()
+}
+
+type NodeThrow struct {
+	Val Node
+}
+
+func (n NodeThrow) Eval(e *Environment) (values.Value, *values.Error) {
+	v, err := n.Val.Eval(e)
+	if err != nil {
+		return values.Nil, err
+	}
+
+	obj, ok := v.ToObject()
+	if !ok {
+		return values.Nil, values.NewError("throw argument must be an instance of Error")
+	}
+
+	errorIface, _ := std.Error.ToInterface()
+	if !obj.Implements(errorIface) {
+		return values.Nil, values.NewError("throw argument must be an instance of Error")
+	}
+
+	message, ok := obj.Get("message").ToString()
+	if !ok {
+		return values.Nil, values.NewError("throw argument must be an instance of Error")
+	}
+
+	return values.Nil, values.NewError(message.String())
+}
+
+func (n NodeThrow) String() string {
+	return "throw " + n.Val.String()
 }
 
 type NodeIf struct {
