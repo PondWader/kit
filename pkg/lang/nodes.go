@@ -3,6 +3,7 @@ package lang
 import (
 	"cmp"
 	"fmt"
+	"math"
 	"strings"
 
 	"github.com/PondWader/kit/pkg/lang/std"
@@ -313,6 +314,37 @@ func (n NodeKeyAccess) Eval(e *Environment) (values.Value, *values.Error) {
 
 func (n NodeKeyAccess) String() string {
 	return fmt.Sprintf("%s.%s", n.Val.String(), n.Key)
+}
+
+type NodeIndexAccess struct {
+	Val   Node
+	Index Node
+}
+
+func (n NodeIndexAccess) Eval(e *Environment) (values.Value, *values.Error) {
+	v, err := n.Val.Eval(e)
+	if err != nil {
+		return values.Nil, err
+	}
+
+	idx, err := n.Index.Eval(e)
+	if err != nil {
+		return values.Nil, err
+	}
+
+	idxNum, ok := idx.ToNumber()
+	if !ok {
+		return values.Nil, values.NewError("index value must be a number")
+	}
+	if math.Trunc(idxNum) != idxNum {
+		return values.Nil, values.NewError("index value must be a valid integer")
+	}
+
+	return v.Index(int(idxNum))
+}
+
+func (n NodeIndexAccess) String() string {
+	return fmt.Sprintf("%s[%s]", n.Val.String(), n.Index.String())
 }
 
 type NodeFunction struct {

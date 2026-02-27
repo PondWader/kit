@@ -384,6 +384,8 @@ func (p *parser) parseOperation(node Node, minPrec int) (Node, error) {
 			node, err = p.parseAssignment(node)
 		case tokens.TokenKindDot:
 			node, err = p.parseKeyAccess(node)
+		case tokens.TokenKindLeftSquareBracket:
+			node, err = p.parseIndexAccess(node)
 		case tokens.TokenKindLeftParen:
 			node, err = p.parseCallExpression(node)
 		case tokens.TokenKindArrow:
@@ -474,6 +476,20 @@ func (p *parser) parseKeyAccess(node Node) (n NodeKeyAccess, err error) {
 
 	n.Val = node
 	n.Key = next.Literal
+	return
+}
+
+func (p *parser) parseIndexAccess(node Node) (n NodeIndexAccess, err error) {
+	idxExpr, err := p.parseExpression()
+	if err != nil {
+		return n, err
+	}
+	if _, err = p.expectToken(tokens.TokenKindRightSquareBracket); err != nil {
+		return n, err
+	}
+
+	n.Val = node
+	n.Index = idxExpr
 	return
 }
 
