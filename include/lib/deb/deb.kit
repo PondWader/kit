@@ -45,16 +45,16 @@ fn deb_arch(arch) {
     return arch
 }
 
-fn load_component_packages({ url, suite, arch }) {
-    index_url = "${url}/dists/${suite}/${a.component}/binary-${arch}/Packages.xz"
+fn load_component_packages({ url, suite, component, arch }) {
+    index_url = "${url}/dists/${suite}/${component}/binary-${arch}/Packages.xz"
     index = xz(fetch(index_url)).text()
 
     return index
         .split("\n\n")
         .map(raw -> package_from_stanza({
             raw = raw
-            source = args.url
-            component = args.component
+            source = url
+            component = component
         }))
         .filter(pkg -> pkg.name != "")
 }
@@ -89,10 +89,6 @@ fn package_from_stanza(args) {
         source = args.source
         component = args.component
     })
-}
-
-interface Installable {
-    fn install()
 }
 
 fn Package(spec) -> {

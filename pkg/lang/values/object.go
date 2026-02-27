@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
+	"slices"
 	"unicode"
 )
 
@@ -12,14 +13,15 @@ var ErrKeyNotFound = errors.New("key does not exist")
 type Object struct {
 	Binding any
 	m       map[string]Value
+	i       []*Interface
 }
 
 func NewObject() *Object {
-	return &Object{nil, make(map[string]Value)}
+	return &Object{nil, make(map[string]Value), nil}
 }
 
 func ObjectFromMap(m map[string]Value) *Object {
-	return &Object{nil, m}
+	return &Object{nil, m, nil}
 }
 
 func (o *Object) Val() Value {
@@ -32,6 +34,23 @@ func (o *Object) Put(key string, val Value) {
 
 func (o *Object) Get(key string) Value {
 	return o.m[key]
+}
+
+func (o *Object) TagInterface(iface *Interface) {
+	if iface == nil {
+		return
+	}
+	if slices.Contains(o.i, iface) {
+		return
+	}
+	o.i = append(o.i, iface)
+}
+
+func (o *Object) Implements(iface *Interface) bool {
+	if iface == nil {
+		return false
+	}
+	return slices.Contains(o.i, iface)
 }
 
 func (o *Object) GetString(key string) (string, error) {

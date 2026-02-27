@@ -249,6 +249,8 @@ func (l *Lexer) getTextToken(literal string) (Token, error) {
 		return Token{Kind: TokenKindImport, Literal: literal}, nil
 	case "in":
 		return Token{Kind: TokenKindIn, Literal: literal}, nil
+	case "instance":
+		return Token{Kind: TokenKindInstance, Literal: literal}, nil
 	case "instanceof":
 		return Token{Kind: TokenKindInstanceof, Literal: literal}, nil
 	case "let":
@@ -295,6 +297,8 @@ func (l *Lexer) getTextToken(literal string) (Token, error) {
 		return Token{Kind: TokenKindStatic, Literal: literal}, nil
 	case "from":
 		return Token{Kind: TokenKindFrom, Literal: literal}, nil
+	case "interface":
+		return Token{Kind: TokenKindInterface, Literal: literal}, nil
 	case "bool":
 		return Token{Kind: TokenKindBool, Literal: literal}, nil
 	case "number":

@@ -14,9 +14,9 @@ func Of(v any) Value {
 		return Value{Obj: float64(v)}
 	case float64:
 		return Value{Obj: float64(v)}
-	case bool, *Object, *List, nil, Function, String:
+	case bool, *Object, *List, *Interface, nil, Function, String:
 		return Value{Obj: v}
-	case Object, List:
+	case Object, List, Interface:
 		return Value{Obj: &v}
 	default:
 		rv := reflect.ValueOf(v)
@@ -55,6 +55,8 @@ func (v Value) Kind() Kind {
 		return KindList
 	case Function:
 		return KindFunction
+	case *Interface:
+		return KindInterface
 	case nil:
 		return KindNil
 	default:
@@ -136,6 +138,11 @@ func (v Value) ToObject() (o *Object, ok bool) {
 
 func (v Value) ToFunction() (f Function, ok bool) {
 	f, ok = v.Obj.(Function)
+	return
+}
+
+func (v Value) ToInterface() (iface *Interface, ok bool) {
+	iface, ok = v.Obj.(*Interface)
 	return
 }
 

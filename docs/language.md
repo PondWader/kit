@@ -1,6 +1,9 @@
 # The Kit Language
 
-The Kit language (kitlang) is used for repository/package configuration. It is programmable. The aim is to be as readable as possible with no prior experience of the language (but some programming experience). This means that unique features will not be used.
+The Kit language (kitlang) is used for repository/package configuration. It is
+programmable. The aim is to be as readable as possible with no prior experience
+of the language (but some programming experience). This means that unique
+features will not be used.
 
 #### Naming conventions
 
@@ -14,13 +17,24 @@ The language is dynamically typed since it is designed for use in small scripts.
 
 In the top level scope all syntax is acceptable except function calls.
 
-> **Why?** Because Kit is designed to be used as a configuration language and files should be able to be loaded without any side effects.
+> **Why?** Because Kit is designed to be used as a configuration language and
+> files should be able to be loaded without any side effects.
 
-`export` can be placed before any declaration that should be exported and are only allowed in the top-level. Currently there is no way to import from another file so `export` only exists to make values available to the host process. For example, if you have a Kit file that describes a package it might contain `export name = "package-name"`.
+`export` can be placed before any declaration that should be exported and are
+only allowed in the top-level. Currently there is no way to import from another
+file so `export` only exists to make values available to the host process. For
+example, if you have a Kit file that describes a package it might contain
+`export name = "package-name"`.
 
 #### Functions
 
-Functions are only allowed to take a **single** argument and return a **single value**. The reasoning for this is multiple arguments can impaire readability of the code. It is better to accept an object, list or use method chaining. For example `min(a, b)` could be more clear as `min([a, b])` which shows the reader that the values are not doing unique things. `split("a.b.c", ".")` is more understandable when written as `split("a.b.c").at(".")`. This could be implemented using an implicit object return:
+Functions are only allowed to take a **single** argument and return a **single
+value**. The reasoning for this is multiple arguments can impaire readability of
+the code. It is better to accept an object, list or use method chaining. For
+example `min(a, b)` could be more clear as `min([a, b])` which shows the reader
+that the values are not doing unique things. `split("a.b.c", ".")` is more
+understandable when written as `split("a.b.c").at(".")`. This could be
+implemented using an implicit object return:
 
 ```
 fn split(str) -> {
@@ -33,9 +47,15 @@ fn split(str) -> {
 
 By using the `->` whatever comes after will be returned.
 
+Functions can also take a type check such as `fn split(str: string)`. This is
+syntactic sugar for performing **runtime** checking of the type and returning an
+error if it doesn't match.
+
 #### Objects
 
-All object properties are immutable. The values can be updated but keys cannot be added/removed. If you wish to dynamically add/remove key-value pairs you should use a map.
+All object properties are immutable. The values can be updated but keys cannot
+be added/removed. If you wish to dynamically add/remove key-value pairs you
+should use a map.
 
 Example declaration of an object:
 
@@ -87,7 +107,8 @@ filter()
 
 #### Strings
 
-Strings are wrapped in regular quotation marks (`"like this"`). All strings can be used as template literals by wrapping variables in `${}`. For example ``
+Strings are wrapped in regular quotation marks (`"like this"`). All strings can
+be used as template literals by wrapping variables in `${}`. For example ``
 
 #### Classes
 
@@ -105,12 +126,47 @@ fn Person(person) -> {
 }
 ```
 
+#### Interfaces
+
+Interfaces can contain fields and methods and can be declared like so:
+
+```kit
+interface Stream {
+    bytes_read: number
+    fn read() 
+}
+```
+
+An object can be declared to implement an interface by using the `instance`
+keyword before the interface reference:
+
+```kit
+stream = instance Stream {
+    bytes_read = 0
+
+    fn read() {
+        return [1, 2, 3]
+    }
+
+    // Extra fields/methods are allowed
+    source = "stdin"
+    fn close() {
+        return nil
+    }
+}
+```
+
+An object must be created via `instance InterfaceName { ... }` to be acceptable
+as a type of that interface.
+
 #### Memory management (draft)
 
-All heap allocated types by default use an ownership model. However, if the value is being stored somewhere, 
-such as in a list with a different lifetime the memory model must be declared.
+All heap allocated types by default use an ownership model. However, if the
+value is being stored somewhere, such as in a list with a different lifetime the
+memory model must be declared.
 
 For example:
+
 ```kit
 my_list = [1, 2, 3]
 another_list = [my_list] // This is not allowed!
@@ -119,11 +175,16 @@ another_list_2 = [RefCounted(my_list)]
 
 #### Async/threading (draft)
 
-Future is a core type that means a function will return a value in the future. Future always immediately returns whilst other execution can continue
+Future is a core type that means a function will return a value in the future.
+Future always immediately returns whilst other execution can continue
 
-Functions can be marked with `async` or `fork`. `fork` runs the code in potentially another thread (green threads managed by the Kit runtime) whilst `async` just means other actions can be performed whilst i/o is pending.
+Functions can be marked with `async` or `fork`. `fork` runs the code in
+potentially another thread (green threads managed by the Kit runtime) whilst
+`async` just means other actions can be performed whilst i/o is pending.
 
-`fork` should always be preferred as it allows the program to leverage multiple threads however `async` can be used for thread-safety reasons when writing programs that operate on the same memory.
+`fork` should always be preferred as it allows the program to leverage multiple
+threads however `async` can be used for thread-safety reasons when writing
+programs that operate on the same memory.
 
 ```
 fork fn connect(): Future<Conn> {

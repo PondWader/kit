@@ -16,6 +16,7 @@ import (
 var (
 	ErrExportNotAtTopLevel       = errors.New("all export statements must be declared at the top level of the module")
 	ErrImportNotAtTopLevel       = errors.New("all import statements must be declared at the top level of the module")
+	ErrInterfaceNotAtTopLevel    = errors.New("all interface statements must be declared at the top level of the module")
 	ErrUnexpectedToken           = errors.New("unexpected token encountered")
 	ErrUnterminatedString        = errors.New("unterminated string literal")
 	ErrExportMustHaveDeclaration = errors.New("an export statement must be followed by a declaration")
@@ -113,6 +114,8 @@ func (p *parser) parseStatementFromToken(tok tokens.Token) (n Node, err error) {
 		return p.parseExport()
 	case tokens.TokenKindImport:
 		return p.parseImport()
+	case tokens.TokenKindInterface:
+		return p.parseInterface()
 	case tokens.TokenKindFunction:
 		return p.parseFunction()
 	case tokens.TokenKindReturn:
@@ -168,6 +171,61 @@ func (p *parser) parseImport() (n NodeImport, err error) {
 			return n, nil
 		}
 	}
+}
+
+func (p *parser) parseInterface() (n NodeInterfaceDecl, err error) {
+	if p.blockDepth != 0 {
+		return n, ErrInterfaceNotAtTopLevel
+	}
+
+	name, err := p.expectToken(tokens.TokenKindIdentifier)
+	if err != nil {
+		return n, err
+	}
+	n.Name = name.Literal
+	n.Fields = make(map[string]values.Kind)
+
+	if _, err = p.expectToken(tokens.TokenKindLeftBrace); err != nil {
+		return n, err
+	}
+
+	for {
+		tok, err := p.nextStatementToken()
+		if err != nil {
+			return n, err
+		}
+		if tok.Kind == tokens.TokenKindRightBrace {
+			return n, nil
+		}
+
+		switch tok.Kind {
+		case tokens.TokenKindIdentifier:
+			if _, err = p.expectToken(tokens.TokenKindColon); err != nil {
+				return n, err
+			}
+			fieldType, err := p.parseType()
+			if err != nil {
+				return n, err
+			}
+			n.Fields[tok.Literal] = fieldType
+		case tokens.TokenKindFunction:
+			methodName, err := p.parseInterfaceMethod()
+			if err != nil {
+				return n, err
+			}
+			n.Methods = append(n.Methods, methodName)
+		default:
+			return n, fmtUnexpectedToken([]tokens.TokenKind{tokens.TokenKindIdentifier, tokens.TokenKindFunction, tokens.TokenKindRightBrace}, tok)
+		}
+	}
+}
+
+func (p *parser) parseInterfaceMethod() (string, error) {
+	def, err := p.parseFunctionDefinition(true)
+	if err != nil {
+		return "", err
+	}
+	return def.Name, nil
 }
 
 func (p *parser) parseReturn() (n NodeReturn, err error) {
@@ -275,6 +333,8 @@ func (p *parser) parseExpressionFromTokenPrec(tok tokens.Token, minPrec int) (No
 		node, err = p.parseList()
 	case tokens.TokenKindLeftBrace:
 		node, err = p.parseObject()
+	case tokens.TokenKindInstance:
+		node, err = p.parseInterfaceInstantiation()
 	case tokens.TokenKindTrue:
 		node = NodeLiteral{Value: values.Of(true)}
 	case tokens.TokenKindFalse:
@@ -338,6 +398,24 @@ func (p *parser) parseOperation(node Node, minPrec int) (Node, error) {
 			return nil, err
 		}
 	}
+}
+
+func (p *parser) parseInterfaceInstantiation() (Node, error) {
+	ifaceTok, err := p.expectToken(tokens.TokenKindIdentifier)
+	if err != nil {
+		return nil, err
+	}
+	iface := NodeIdentifier{Ident: ifaceTok.Literal}
+
+	if _, err = p.expectToken(tokens.TokenKindLeftBrace); err != nil {
+		return nil, err
+	}
+
+	obj, err := p.parseObject()
+	if err != nil {
+		return nil, err
+	}
+	return NodeInterfaceInstantiate{Interface: iface, Value: obj}, nil
 }
 
 func (p *parser) parseCallExpression(fn Node) (n NodeCall, err error) {
@@ -435,41 +513,14 @@ func (p *parser) parseObject() (NodeObject, error) {
 }
 
 func (p *parser) parseFunction() (Node, error) {
-	// Optional function name, if so it's a declaration otherwise it's an anonymous function
-	start, err := p.expectToken(tokens.TokenKindIdentifier, tokens.TokenKindLeftParen)
+	def, err := p.parseFunctionDefinition(false)
 	if err != nil {
 		return nil, err
 	}
-	if start.Kind == tokens.TokenKindIdentifier {
-		if _, err = p.expectToken(tokens.TokenKindLeftParen); err != nil {
-			return nil, err
-		}
-	}
 
-	var fn NodeFunction
-	tok, err := p.expectToken(tokens.TokenKindIdentifier, tokens.TokenKindRightParen)
-	if err != nil {
-		return nil, err
-	} else if tok.Kind == tokens.TokenKindIdentifier {
-		fn.ArgName = tok.Literal
+	fn := NodeFunction{ArgName: def.ArgName, ArgKind: def.ArgKind}
 
-		next, err := p.expectToken(tokens.TokenKindRightParen, tokens.TokenKindColon)
-		if err != nil {
-			return nil, err
-		}
-		if next.Kind == tokens.TokenKindColon {
-			argKind, err := p.parseType()
-			if err != nil {
-				return nil, err
-			}
-			fn.ArgKind = argKind
-			if _, err := p.expectToken(tokens.TokenKindRightParen); err != nil {
-				return nil, err
-			}
-		}
-	}
-
-	tok, err = p.expectToken(tokens.TokenKindLeftBrace, tokens.TokenKindArrow)
+	tok, err := p.expectToken(tokens.TokenKindLeftBrace, tokens.TokenKindArrow)
 	if err != nil {
 		return nil, err
 	} else if tok.Kind == tokens.TokenKindLeftBrace {
@@ -490,10 +541,56 @@ func (p *parser) parseFunction() (Node, error) {
 		fn.Body = b
 	}
 
-	if start.Kind == tokens.TokenKindIdentifier {
-		return NodeDeclaration{Name: start.Literal, Value: fn}, nil
+	if def.Name != "" {
+		return NodeDeclaration{Name: def.Name, Value: fn}, nil
 	}
 	return fn, nil
+}
+
+type functionDefinition struct {
+	Name    string
+	ArgName string
+	ArgKind values.Kind
+}
+
+func (p *parser) parseFunctionDefinition(nameRequired bool) (def functionDefinition, err error) {
+	start, err := p.expectToken(tokens.TokenKindIdentifier, tokens.TokenKindLeftParen)
+	if err != nil {
+		return def, err
+	}
+	if start.Kind == tokens.TokenKindIdentifier {
+		def.Name = start.Literal
+		if _, err = p.expectToken(tokens.TokenKindLeftParen); err != nil {
+			return def, err
+		}
+	} else if nameRequired {
+		return def, fmtUnexpectedToken([]tokens.TokenKind{tokens.TokenKindIdentifier}, start)
+	}
+
+	tok, err := p.expectToken(tokens.TokenKindIdentifier, tokens.TokenKindRightParen)
+	if err != nil {
+		return def, err
+	}
+	if tok.Kind == tokens.TokenKindIdentifier {
+		def.ArgName = tok.Literal
+
+		next, err := p.expectToken(tokens.TokenKindRightParen, tokens.TokenKindColon)
+		if err != nil {
+			return def, err
+		}
+		if next.Kind == tokens.TokenKindColon {
+			argKind, err := p.parseType()
+			if err != nil {
+				return def, err
+			}
+			def.ArgKind = argKind
+			if _, err := p.expectToken(tokens.TokenKindRightParen); err != nil {
+				return def, err
+			}
+		}
+	}
+
+	return def, nil
 }
 
 func (p *parser) parseType() (values.Kind, error) {

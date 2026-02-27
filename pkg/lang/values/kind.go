@@ -10,6 +10,7 @@ const (
 	KindObject
 	KindList
 	KindFunction
+	KindInterface
 	KindNil
 )
 
@@ -27,6 +28,8 @@ func (k Kind) String() string {
 		return "list"
 	case KindFunction:
 		return "function"
+	case KindInterface:
+		return "interface"
 	case KindNil:
 		return "nil"
 	default:

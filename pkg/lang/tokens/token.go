@@ -44,6 +44,7 @@ const (
 	TokenKindIf
 	TokenKindImport
 	TokenKindIn
+	TokenKindInstance
 	TokenKindInstanceof
 	TokenKindLet
 	TokenKindNew
@@ -227,6 +228,8 @@ func (tk TokenKind) String() string {
 		return `"import"`
 	case TokenKindIn:
 		return `"in"`
+	case TokenKindInstance:
+		return `"instance"`
 	case TokenKindInstanceof:
 		return `"instanceof"`
 	case TokenKindLet:

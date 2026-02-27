@@ -51,6 +51,36 @@ func (n NodeImport) String() string {
 	return "import " + strings.Join(quoted, ",")
 }
 
+type NodeInterfaceDecl struct {
+	Name    string
+	Fields  map[string]values.Kind
+	Methods []string
+}
+
+func (n NodeInterfaceDecl) Eval(e *Environment) (values.Value, *values.Error) {
+	iface := values.NewInterface(n.Name)
+	for key, kind := range n.Fields {
+		iface.AddField(key, kind)
+	}
+	for _, method := range n.Methods {
+		iface.AddMethod(method)
+	}
+	v := iface.Val()
+	e.SetScoped(n.Name, v)
+	return v, nil
+}
+
+func (n NodeInterfaceDecl) String() string {
+	var body []string
+	for key, kind := range n.Fields {
+		body = append(body, fmt.Sprintf("%s: %s", key, kind.String()))
+	}
+	for _, method := range n.Methods {
+		body = append(body, fmt.Sprintf("fn %s()", method))
+	}
+	return fmt.Sprintf("interface %s { %s }", n.Name, strings.Join(body, "; "))
+}
+
 type NodeDeclaration struct {
 	Name  string
 	Value Node
@@ -115,6 +145,42 @@ func (n NodeObject) String() string {
 		return fmt.Sprintf("{ %s }", strings.Join(parts, "; "))
 	}
 	return "{}"
+}
+
+type NodeInterfaceInstantiate struct {
+	Interface Node
+	Value     NodeObject
+}
+
+func (n NodeInterfaceInstantiate) Eval(e *Environment) (values.Value, *values.Error) {
+	ifaceV, err := n.Interface.Eval(e)
+	if err != nil {
+		return values.Nil, err
+	}
+	iface, ok := ifaceV.ToInterface()
+	if !ok {
+		return values.Nil, values.NewError("expected interface value before object literal")
+	}
+
+	v, err := n.Value.Eval(e)
+	if err != nil {
+		return values.Nil, err
+	}
+	obj, ok := v.ToObject()
+	if !ok {
+		return values.Nil, values.NewError("expected object value when creating interface instance")
+	}
+
+	if err = iface.ValidateObject(obj); err != nil {
+		return values.Nil, err
+	}
+	obj.TagInterface(iface)
+
+	return v, nil
+}
+
+func (n NodeInterfaceInstantiate) String() string {
+	return fmt.Sprintf("%s %s", n.Interface.String(), n.Value.String())
 }
 
 type NodeBlock struct {

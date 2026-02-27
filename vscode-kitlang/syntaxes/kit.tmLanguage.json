@@ -18,6 +18,12 @@
       "include": "#export-declaration"
     },
     {
+      "include": "#interface-declaration"
+    },
+    {
+      "include": "#interface-instantiation"
+    },
+    {
       "include": "#function-keywords"
     },
     {
@@ -125,7 +131,7 @@
       "patterns": [
         {
           "name": "keyword.control.kit",
-          "match": "\\b(if|else|for|while|range|return|export|import|as|in|throw)\\b"
+          "match": "\\b(if|else|for|while|range|return|export|import|as|in|throw|interface|instance)\\b"
         },
         {
           "name": "storage.type.kit",
@@ -218,6 +224,28 @@
         },
         "2": {
           "name": "variable.other.constant.kit"
+        }
+      }
+    },
+    "interface-declaration": {
+      "match": "\\b(interface)\\s+([A-Za-z_][A-Za-z0-9_]*)",
+      "captures": {
+        "1": {
+          "name": "keyword.control.kit"
+        },
+        "2": {
+          "name": "entity.name.type.kit"
+        }
+      }
+    },
+    "interface-instantiation": {
+      "match": "\\b(instance)\\s+([A-Za-z_][A-Za-z0-9_]*)(?=\\s*\\{)",
+      "captures": {
+        "1": {
+          "name": "keyword.control.kit"
+        },
+        "2": {
+          "name": "entity.name.type.kit"
         }
       }
     }
