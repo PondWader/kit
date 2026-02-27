@@ -7,7 +7,7 @@ export fn repository(source: string) {
     return {
         url = split[0]
         suite = split[1]
-        components = split.slice(2)
+        components = split.slice({ start = 2 })
     
         fn packages() {
             package_lists = components.map(component -> load_component_packages({

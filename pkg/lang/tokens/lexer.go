@@ -25,16 +25,11 @@ func NewLexer(input io.Reader) *Lexer {
 type Lexer struct {
 	r *bufio.Reader
 
-	nextTokenAvailable   bool
-	nextToken            Token
-	currentLine          int
-	emitTypescriptTokens bool
+	nextTokenAvailable bool
+	nextToken          Token
+	currentLine        int
 
 	State int
-}
-
-func (l *Lexer) SetEmitTypeScriptTokens(enabled bool) {
-	l.emitTypescriptTokens = enabled
 }
 
 func (l *Lexer) Next() (Token, error) {
@@ -212,7 +207,6 @@ func (l *Lexer) getSymbolToken(firstChar rune) (Token, error) {
 
 func (l *Lexer) getTextToken(literal string) (Token, error) {
 	switch literal {
-	// JavaScript Keywords
 	case "break":
 		return Token{Kind: TokenKindBreak, Literal: literal}, nil
 	case "case":
@@ -301,74 +295,12 @@ func (l *Lexer) getTextToken(literal string) (Token, error) {
 		return Token{Kind: TokenKindStatic, Literal: literal}, nil
 	case "from":
 		return Token{Kind: TokenKindFrom, Literal: literal}, nil
-	}
-
-	if l.emitTypescriptTokens {
-		switch literal {
-		// TypeScript Keywords
-		case "abstract":
-			return Token{Kind: TokenKindAbstract, Literal: literal}, nil
-		case "any":
-			return Token{Kind: TokenKindAny, Literal: literal}, nil
-		case "as":
-			return Token{Kind: TokenKindAs, Literal: literal}, nil
-		case "asserts":
-			return Token{Kind: TokenKindAsserts, Literal: literal}, nil
-		case "boolean":
-			return Token{Kind: TokenKindBoolean, Literal: literal}, nil
-		case "constructor":
-			return Token{Kind: TokenKindConstructor, Literal: literal}, nil
-		case "declare":
-			return Token{Kind: TokenKindDeclare, Literal: literal}, nil
-		case "get":
-			return Token{Kind: TokenKindGet, Literal: literal}, nil
-		case "implements":
-			return Token{Kind: TokenKindImplements, Literal: literal}, nil
-		case "infer":
-			return Token{Kind: TokenKindInfer, Literal: literal}, nil
-		case "interface":
-			return Token{Kind: TokenKindInterface, Literal: literal}, nil
-		case "is":
-			return Token{Kind: TokenKindIs, Literal: literal}, nil
-		case "keyof":
-			return Token{Kind: TokenKindKeyof, Literal: literal}, nil
-		case "module":
-			return Token{Kind: TokenKindModule, Literal: literal}, nil
-		case "namespace":
-			return Token{Kind: TokenKindNamespace, Literal: literal}, nil
-		case "never":
-			return Token{Kind: TokenKindNever, Literal: literal}, nil
-		case "number":
-			return Token{Kind: TokenKindKeywordNumber, Literal: literal}, nil
-		case "object":
-			return Token{Kind: TokenKindObject, Literal: literal}, nil
-		case "package":
-			return Token{Kind: TokenKindPackage, Literal: literal}, nil
-		case "private":
-			return Token{Kind: TokenKindPrivate, Literal: literal}, nil
-		case "protected":
-			return Token{Kind: TokenKindProtected, Literal: literal}, nil
-		case "public":
-			return Token{Kind: TokenKindPublic, Literal: literal}, nil
-		case "readonly":
-			return Token{Kind: TokenKindReadonly, Literal: literal}, nil
-		case "require":
-			return Token{Kind: TokenKindRequire, Literal: literal}, nil
-		case "set":
-			return Token{Kind: TokenKindSet, Literal: literal}, nil
-		case "string":
-			return Token{Kind: TokenKindString, Literal: literal}, nil
-		case "symbol":
-			return Token{Kind: TokenKindSymbol, Literal: literal}, nil
-		case "type":
-			return Token{Kind: TokenKindType, Literal: literal}, nil
-		case "unique":
-			return Token{Kind: TokenKindUnique, Literal: literal}, nil
-		case "unknown":
-			return Token{Kind: TokenKindUnknown, Literal: literal}, nil
-		case "using":
-			return Token{Kind: TokenKindUsing, Literal: literal}, nil
-		}
+	case "bool":
+		return Token{Kind: TokenKindBool, Literal: literal}, nil
+	case "number":
+		return Token{Kind: TokenKindKeywordNumber, Literal: literal}, nil
+	case "string":
+		return Token{Kind: TokenKindString, Literal: literal}, nil
 	}
 
 	if !isValidIdentifier(literal) {

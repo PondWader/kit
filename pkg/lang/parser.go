@@ -452,8 +452,20 @@ func (p *parser) parseFunction() (Node, error) {
 		return nil, err
 	} else if tok.Kind == tokens.TokenKindIdentifier {
 		fn.ArgName = tok.Literal
-		if _, err := p.expectToken(tokens.TokenKindRightParen); err != nil {
+
+		next, err := p.expectToken(tokens.TokenKindRightParen, tokens.TokenKindColon)
+		if err != nil {
 			return nil, err
+		}
+		if next.Kind == tokens.TokenKindColon {
+			argKind, err := p.parseType()
+			if err != nil {
+				return nil, err
+			}
+			fn.ArgKind = argKind
+			if _, err := p.expectToken(tokens.TokenKindRightParen); err != nil {
+				return nil, err
+			}
 		}
 	}
 
@@ -482,6 +494,23 @@ func (p *parser) parseFunction() (Node, error) {
 		return NodeDeclaration{Name: start.Literal, Value: fn}, nil
 	}
 	return fn, nil
+}
+
+func (p *parser) parseType() (values.Kind, error) {
+	tok, err := p.expectToken(tokens.TokenKindString, tokens.TokenKindBool, tokens.TokenKindKeywordNumber)
+	if err != nil {
+		return values.KindUnknownKind, err
+	}
+	switch tok.Kind {
+	case tokens.TokenKindString:
+		return values.KindString, nil
+	case tokens.TokenKindBool:
+		return values.KindBool, nil
+	case tokens.TokenKindKeywordNumber:
+		return values.KindNumber, nil
+	default:
+		return values.KindUnknownKind, nil
+	}
 }
 
 func (p *parser) parseBlock() (NodeBlock, error) {

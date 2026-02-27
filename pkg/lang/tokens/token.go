@@ -73,7 +73,7 @@ const (
 	TokenKindAny
 	TokenKindAs
 	TokenKindAsserts
-	TokenKindBoolean
+	TokenKindBool
 	TokenKindConstructor
 	TokenKindDeclare
 	TokenKindGet
@@ -283,8 +283,8 @@ func (tk TokenKind) String() string {
 		return `"as"`
 	case TokenKindAsserts:
 		return `"asserts"`
-	case TokenKindBoolean:
-		return `"boolean"`
+	case TokenKindBool:
+		return `"bool"`
 	case TokenKindConstructor:
 		return `"constructor"`
 	case TokenKindDeclare:
