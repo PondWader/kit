@@ -15,6 +15,8 @@ type Environment struct {
 	parent  *Environment
 
 	ModLoader func(modName string) (*Environment, error)
+
+	VarBoundary bool
 }
 
 func NewEnv() *Environment {
@@ -49,7 +51,7 @@ func (e *Environment) Export(name string, value values.Value) {
 }
 
 func (e *Environment) Get(name string) (values.Value, *values.Error) {
-	env, v := e.getVarEnv(name)
+	env, v := e.getVarEnv(name, false)
 	if env == nil {
 		return v, values.NewError(name + " does not exist in scope")
 	}
@@ -68,7 +70,7 @@ func (e *Environment) GetExport(name string) (values.Value, error) {
 }
 
 func (e *Environment) Set(name string, value values.Value) {
-	env, _ := e.getVarEnv(name)
+	env, _ := e.getVarEnv(name, true)
 	if env != nil {
 		env.Vars[name] = value
 	} else {
@@ -100,21 +102,21 @@ func (e *Environment) ExecuteReader(r io.Reader) *values.Error {
 	return e.Execute(prog)
 }
 
-func (e *Environment) getVarEnv(name string) (*Environment, values.Value) {
+func (e *Environment) getVarEnv(name string, settable bool) (*Environment, values.Value) {
 	v, ok := e.Vars[name]
 	if ok {
 		return e, v
-	} else if e.parent == nil {
+	} else if e.parent == nil || (settable && e.VarBoundary) {
 		return nil, values.Nil
 	}
-	return e.parent.getVarEnv(name)
+	return e.parent.getVarEnv(name, settable)
 }
 
 func (e *Environment) NewChild() *Environment {
 	child := NewEnv()
 	child.parent = e
 	child.control = e.control
-	return e
+	return child
 }
 
 func (e *Environment) Return(v values.Value) *values.Error {

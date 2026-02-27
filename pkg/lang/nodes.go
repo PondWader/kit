@@ -131,6 +131,7 @@ type NodeObject struct {
 
 func (n NodeObject) Eval(e *Environment) (values.Value, *values.Error) {
 	child := e.NewChild()
+	child.VarBoundary = true
 	if err := child.Execute(n.Body); err != nil {
 		return values.Nil, err
 	}

@@ -16,6 +16,7 @@ func (b *installBinding) loadMod(modName string) (*lang.Environment, error) {
 	defer modCode.Close()
 
 	env := lang.NewEnv()
+	env.LoadStd()
 	b.Load(env)
 
 	if langErr := env.ExecuteReader(modCode); langErr != nil {
