@@ -17,15 +17,10 @@ type Package struct {
 	Path string
 	Repo string
 
-	k   *Kit
-	env *lang.Environment
+	k *Kit
 }
 
 func (p *Package) loadEnv(b lang.Binding) (*lang.Environment, error) {
-	if p.env != nil {
-		return p.env, nil
-	}
-
 	f, err := p.k.Home.Open(filepath.Join(p.Path, "package.kit"))
 	if err != nil {
 		return nil, err
@@ -33,15 +28,14 @@ func (p *Package) loadEnv(b lang.Binding) (*lang.Environment, error) {
 	env := lang.NewEnv()
 	env.LoadStd()
 	env.Enable(b)
-	err = env.ExecuteReader(f)
-	if err != nil {
-		return nil, err
+	if langErr := env.ExecuteReader(f); langErr != nil {
+		return nil, langErr
 	}
 	return env, nil
 }
 
 func (p *Package) Versions() ([]string, error) {
-	env, err := p.loadEnv(nil)
+	env, err := p.loadEnv(&installBinding{})
 	if err != nil {
 		return nil, err
 	}
@@ -87,20 +81,6 @@ func (p *Package) Versions() ([]string, error) {
 }
 
 func (p *Package) Install(version string) error {
-	env, err := p.loadEnv(nil)
-	if err != nil {
-		return err
-	}
-
-	installV, err := env.GetExport("install")
-	if err != nil {
-		return err
-	}
-	installFn, ok := installV.ToFunction()
-	if !ok {
-		return fmt.Errorf("error running install in %s: expected install export to be a function", filepath.Join(p.Path, "package.kit"))
-	}
-
 	// Setup install temp dir
 	installDir, err := os.MkdirTemp(p.k.Home.TempDir(), "install-"+p.Name+"-")
 	if err != nil {
@@ -123,7 +103,19 @@ func (p *Package) Install(version string) error {
 
 	// Run install function
 	sb := &installBinding{RootDir: root, Install: &mountBinding{MountDir: filepath.Join(p.k.Home.Name(), mountDir)}}
-	sb.Load(env)
+	env, err := p.loadEnv(sb)
+	if err != nil {
+		return err
+	}
+
+	installV, err := env.GetExport("install")
+	if err != nil {
+		return err
+	}
+	installFn, ok := installV.ToFunction()
+	if !ok {
+		return fmt.Errorf("error running install in %s: expected install export to be a function", filepath.Join(p.Path, "package.kit"))
+	}
 
 	_, cErr := installFn.Call(values.String(version).Val())
 	if cErr != nil {

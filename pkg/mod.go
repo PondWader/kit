@@ -9,7 +9,7 @@ import (
 
 func (b *installBinding) loadMod(modName string) (*lang.Environment, error) {
 	// Read embeded library
-	modCode, err := include.Lib.Open(filepath.Join(modName, modName+".kit"))
+	modCode, err := include.Lib.Open(filepath.Join("lib", modName, modName+".kit"))
 	if err != nil {
 		return nil, err
 	}
@@ -18,9 +18,8 @@ func (b *installBinding) loadMod(modName string) (*lang.Environment, error) {
 	env := lang.NewEnv()
 	b.Load(env)
 
-	err = env.ExecuteReader(modCode)
-	if err != nil {
-		return nil, err
+	if langErr := env.ExecuteReader(modCode); langErr != nil {
+		return nil, langErr
 	}
 	return env, nil
 }

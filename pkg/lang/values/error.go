@@ -9,20 +9,32 @@ func NewError(msg string) *Error {
 	return &Error{Msg: String(msg)}
 }
 
-func (s Error) Get(key string) Value {
+func (e *Error) Get(key string) Value {
+	if e == nil {
+		return Nil
+	}
+
 	switch key {
 	case "msg":
-		return Of(s.Msg)
+		return Of(e.Msg)
 	default:
 		return Nil
 	}
 }
 
-func (e Error) Error() string {
+func (e *Error) Error() string {
+	if e == nil {
+		return "<nil error>"
+	}
+
 	return string(e.Msg)
 }
 
-func (e Error) Unwrap() error {
+func (e *Error) Unwrap() error {
+	if e == nil {
+		return nil
+	}
+
 	return e.Cause
 }
 

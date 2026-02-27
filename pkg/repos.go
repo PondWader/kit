@@ -51,9 +51,10 @@ func (r *Repo) index(k *Kit) error {
 		}
 		defer f.Close()
 
-		env, err := lang.Execute(f)
-		if err != nil {
-			return err
+		env := lang.NewEnv()
+		env.Enable(&installBinding{})
+		if langErr := env.ExecuteReader(f); langErr != nil {
+			return langErr
 		}
 
 		nameV, err := env.GetExport("name")

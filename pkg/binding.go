@@ -140,11 +140,13 @@ func (b *installBinding) createDirBuilder(path string) values.Value {
 
 func (b *installBinding) Load(env *lang.Environment) {
 	env.Set("sys", b.CreateSys().Val())
-	env.Set("tar", b.CreateTar().Val())
-	env.Set("zip", b.CreateZip().Val())
-	env.Set("fs", b.CreateFs().Val())
-	env.Set("link_bin_dir", values.Of(b.LinkBinDir))
-	env.Set("link_bin_file", values.Of(b.LinkBinFile))
+	if b.RootDir != nil {
+		env.Set("tar", b.CreateTar().Val())
+		env.Set("zip", b.CreateZip().Val())
+		env.Set("fs", b.CreateFs().Val())
+		env.Set("link_bin_dir", values.Of(b.LinkBinDir))
+		env.Set("link_bin_file", values.Of(b.LinkBinFile))
+	}
 	if b.Install != nil {
 		env.Set("install", values.ObjectFromStruct(b.Install).Val())
 	}
