@@ -30,6 +30,24 @@ func resolveEscapedCharacter(char rune) rune {
 	}
 }
 
+func (p *parser) parsePureString() (string, error) {
+	if _, err := p.expectToken(tokens.TokenKindDoubleQuote); err != nil {
+		return "", err
+	}
+
+	var sb strings.Builder
+	for {
+		char, _, err := p.r.ReadRune()
+		if err != nil {
+			return "", err
+		}
+		if char == '"' {
+			return sb.String(), nil
+		}
+		sb.WriteRune(char)
+	}
+}
+
 func (p *parser) parseString(quotation rune) (n NodeString, err error) {
 	var isEscaped bool
 	var isDollarPrefixed bool

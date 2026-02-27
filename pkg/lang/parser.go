@@ -15,6 +15,7 @@ import (
 
 var (
 	ErrExportNotAtTopLevel       = errors.New("all export statements must be declared at the top level of the module")
+	ErrImportNotAtTopLevel       = errors.New("all import statements must be declared at the top level of the module")
 	ErrUnexpectedToken           = errors.New("unexpected token encountered")
 	ErrUnterminatedString        = errors.New("unterminated string literal")
 	ErrExportMustHaveDeclaration = errors.New("an export statement must be followed by a declaration")
@@ -110,6 +111,8 @@ func (p *parser) parseStatementFromToken(tok tokens.Token) (n Node, err error) {
 	switch tok.Kind {
 	case tokens.TokenKindExport:
 		return p.parseExport()
+	case tokens.TokenKindImport:
+		return p.parseImport()
 	case tokens.TokenKindFunction:
 		return p.parseFunction()
 	case tokens.TokenKindReturn:
@@ -142,6 +145,29 @@ func (p *parser) parseExport() (n NodeExport, err error) {
 	}
 	n.Decl = decl
 	return
+}
+
+func (p *parser) parseImport() (n NodeImport, err error) {
+	if p.blockDepth != 0 {
+		return n, ErrImportNotAtTopLevel
+	}
+
+	for {
+		modName, err := p.parsePureString()
+		if err != nil {
+			return n, err
+		}
+		n.Modules = append(n.Modules, modName)
+
+		tok, err := p.nextAfterWhiteSpace()
+		if err != nil {
+			return n, err
+		}
+		if tok.Kind != tokens.TokenKindComma {
+			p.l.Unread(tok)
+			return n, nil
+		}
+	}
 }
 
 func (p *parser) parseReturn() (n NodeReturn, err error) {

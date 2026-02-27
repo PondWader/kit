@@ -13,6 +13,8 @@ type Environment struct {
 
 	control *ExecutionControl
 	parent  *Environment
+
+	ModLoader func(modName string) (*Environment, error)
 }
 
 func NewEnv() *Environment {
@@ -110,6 +112,18 @@ func (e *Environment) Return(v values.Value) *values.Error {
 	}
 	e.control.ReturnVal = v
 	e.control.Returned = true
+	return nil
+}
+
+func (e *Environment) Import(modName string) *values.Error {
+	if e.ModLoader == nil {
+		return values.NewError("import " + modName + " not found")
+	}
+	mod, err := e.ModLoader(modName)
+	if err != nil {
+		return values.GoError(err)
+	}
+	e.Set(modName, values.ObjectFromMap(mod.Vars).Val())
 	return nil
 }
 

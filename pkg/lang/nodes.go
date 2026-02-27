@@ -30,6 +30,25 @@ func (n NodeExport) String() string {
 	return fmt.Sprintf("export %s", n.Decl.String())
 }
 
+type NodeImport struct {
+	Modules []string
+}
+
+func (n NodeImport) Eval(e *Environment) (values.Value, *values.Error) {
+	for _, modName := range n.Modules {
+		e.Import(modName)
+	}
+	return values.Nil, nil
+}
+
+func (n NodeImport) String() string {
+	quoted := make([]string, len(n.Modules))
+	for i, mod := range n.Modules {
+		quoted[i] = mod
+	}
+	return "import " + strings.Join(quoted, ",")
+}
+
 type NodeDeclaration struct {
 	Name  string
 	Value Node
