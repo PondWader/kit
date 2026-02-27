@@ -89,6 +89,14 @@ func (e *Environment) Execute(prog []Node) *values.Error {
 	return nil
 }
 
+func (e *Environment) ExecuteReader(r io.Reader) *values.Error {
+	prog, err := Parse(r)
+	if err != nil {
+		return values.GoError(err)
+	}
+	return e.Execute(prog)
+}
+
 func (e *Environment) getVarEnv(name string) (*Environment, values.Value) {
 	v, ok := e.Vars[name]
 	if ok {
@@ -117,13 +125,13 @@ func (e *Environment) Return(v values.Value) *values.Error {
 
 func (e *Environment) Import(modName string) *values.Error {
 	if e.ModLoader == nil {
-		return values.NewError("import " + modName + " not found")
+		return values.NewError("import \"" + modName + "\" not found")
 	}
 	mod, err := e.ModLoader(modName)
 	if err != nil {
 		return values.GoError(err)
 	}
-	e.Set(modName, values.ObjectFromMap(mod.Vars).Val())
+	e.Set(modName, values.ObjectFromMap(mod.Exports).Val())
 	return nil
 }
 
@@ -135,4 +143,14 @@ type ExecutionControl struct {
 
 func NewExec() *ExecutionControl {
 	return &ExecutionControl{}
+}
+
+type Binding interface {
+	Load(env *Environment)
+}
+
+func (e *Environment) Enable(b Binding) {
+	if b != nil {
+		b.Load(e)
+	}
 }

@@ -1,0 +1,20 @@
+import "deb"
+
+export name = "libffi7"
+export deprecated = true
+
+ubuntu_repo_name = "https://archive.ubuntu.com/ubuntu focal main"
+
+export fn install(version) {
+    deb.repository(ubuntu_repo_name)
+        .packages()
+        .find("libffi7")
+        .install()
+}
+
+export fn versions() {
+    package = deb.repository(ubuntu_repo_name)
+        .packages()
+        .find("libffi7")
+    return [package.version]
+}

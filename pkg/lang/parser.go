@@ -275,6 +275,10 @@ func (p *parser) parseExpressionFromTokenPrec(tok tokens.Token, minPrec int) (No
 		node, err = p.parseList()
 	case tokens.TokenKindLeftBrace:
 		node, err = p.parseObject()
+	case tokens.TokenKindTrue:
+		node = NodeLiteral{Value: values.Of(true)}
+	case tokens.TokenKindFalse:
+		node = NodeLiteral{Value: values.Of(false)}
 	default:
 		return nil, fmtUnexpectedToken(nil, tok)
 	}

@@ -21,7 +21,7 @@ type Package struct {
 	env *lang.Environment
 }
 
-func (p *Package) loadEnv() (*lang.Environment, error) {
+func (p *Package) loadEnv(b lang.Binding) (*lang.Environment, error) {
 	if p.env != nil {
 		return p.env, nil
 	}
@@ -30,16 +30,18 @@ func (p *Package) loadEnv() (*lang.Environment, error) {
 	if err != nil {
 		return nil, err
 	}
-	env, err := lang.Execute(f)
+	env := lang.NewEnv()
+	env.LoadStd()
+	env.Enable(b)
+	err = env.ExecuteReader(f)
 	if err != nil {
 		return nil, err
 	}
-	env.LoadStd()
 	return env, nil
 }
 
 func (p *Package) Versions() ([]string, error) {
-	env, err := p.loadEnv()
+	env, err := p.loadEnv(nil)
 	if err != nil {
 		return nil, err
 	}
@@ -85,7 +87,7 @@ func (p *Package) Versions() ([]string, error) {
 }
 
 func (p *Package) Install(version string) error {
-	env, err := p.loadEnv()
+	env, err := p.loadEnv(nil)
 	if err != nil {
 		return err
 	}

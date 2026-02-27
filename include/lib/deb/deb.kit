@@ -91,20 +91,22 @@ fn package_from_stanza(args) {
     })
 }
 
-fn Package(spec) {
-    return {
-        name = spec.name
-        version = spec.version
-        architecture = spec.architecture
-        filename = spec.filename
-        sha256 = spec.sha256
-        component = spec.component
+interface Installable {
+    fn install()
+}
 
-        fn install() {
-            deb_url = "${spec.source}/${spec.filename.remove_prefix("/")}"
-            data_tar = ar(fetch(deb_url)).file("data.tar.xz")
-            tar.xz.extract(data_tar).to("/")
-            link_unix_fs()
-        }
+fn Package(spec) -> {
+    name = spec.name
+    version = spec.version
+    architecture = spec.architecture
+    filename = spec.filename
+    sha256 = spec.sha256
+    component = spec.component
+
+    fn install() {
+        deb_url = "${spec.source}/${spec.filename.remove_prefix("/")}"
+        data_tar = ar(fetch(deb_url)).file("data.tar.xz")
+        tar.xz.extract(data_tar).to("/")
+        link_fhs_dirs()
     }
 }

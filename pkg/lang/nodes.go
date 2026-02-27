@@ -36,7 +36,9 @@ type NodeImport struct {
 
 func (n NodeImport) Eval(e *Environment) (values.Value, *values.Error) {
 	for _, modName := range n.Modules {
-		e.Import(modName)
+		if err := e.Import(modName); err != nil {
+			return values.Nil, err
+		}
 	}
 	return values.Nil, nil
 }

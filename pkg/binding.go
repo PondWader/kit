@@ -148,6 +148,7 @@ func (b *installBinding) Load(env *lang.Environment) {
 	if b.Install != nil {
 		env.Set("install", values.ObjectFromStruct(b.Install).Val())
 	}
+	env.ModLoader = b.loadMod
 }
 
 func (b *installBinding) LinkBinDir(dirV values.Value) error {
