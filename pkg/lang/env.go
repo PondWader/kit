@@ -42,6 +42,7 @@ func Execute(r io.Reader) (*Environment, error) {
 func (e *Environment) LoadStd() {
 	e.SetScoped("fetch", std.Fetch)
 	e.SetScoped("xz", std.Xz)
+	e.SetScoped("ar", std.Ar)
 	e.SetScoped("Error", std.Error)
 	e.SetScoped("error", std.NewError)
 }
