@@ -39,6 +39,7 @@ func Execute(r io.Reader) (*Environment, error) {
 
 func (e *Environment) LoadStd() {
 	e.SetScoped("fetch", std.Fetch)
+	e.SetScoped("xz", std.Xz)
 }
 
 func (e *Environment) Export(name string, value values.Value) {
