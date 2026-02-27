@@ -250,12 +250,17 @@ func (n NodeKeyAccess) String() string {
 
 type NodeFunction struct {
 	ArgName string
+	ArgKind values.Kind
 	Body    Node
 }
 
 func (n NodeFunction) Eval(e *Environment) (values.Value, *values.Error) {
 	if n.ArgName != "" {
 		return values.Of(func(arg values.Value) (values.Value, *values.Error) {
+			if n.ArgKind != values.KindUnknownKind && arg.Kind() != n.ArgKind {
+				return values.Nil, values.NewError("expected " + n.ArgKind.String() + " as function argument")
+			}
+
 			c := e.NewChild()
 			c.SetScoped(n.ArgName, arg)
 			return n.Body.Eval(c)
@@ -268,6 +273,9 @@ func (n NodeFunction) Eval(e *Environment) (values.Value, *values.Error) {
 
 func (n NodeFunction) String() string {
 	if n.ArgName != "" {
+		if n.ArgKind != values.KindUnknownKind {
+			return fmt.Sprintf("fn(%s: %s) %s", n.ArgName, n.ArgKind.String(), n.Body.String())
+		}
 		return fmt.Sprintf("fn(%s) %s", n.ArgName, n.Body.String())
 	}
 	return fmt.Sprintf("fn() %s", n.Body.String())
