@@ -541,7 +541,7 @@ func (p *parser) parseFunction() (Node, error) {
 		return nil, err
 	}
 
-	fn := NodeFunction{ArgName: def.ArgName, ArgKind: def.ArgKind}
+	fn := NodeFunction{ArgName: def.ArgName, ArgKind: def.ArgKind, ArgDestructure: def.ArgDestructure}
 
 	tok, err := p.expectToken(tokens.TokenKindLeftBrace, tokens.TokenKindArrow)
 	if err != nil {
@@ -571,9 +571,10 @@ func (p *parser) parseFunction() (Node, error) {
 }
 
 type functionDefinition struct {
-	Name    string
-	ArgName string
-	ArgKind values.Kind
+	Name           string
+	ArgName        string
+	ArgKind        values.Kind
+	ArgDestructure []string
 }
 
 func (p *parser) parseFunctionDefinition(nameRequired bool) (def functionDefinition, err error) {
@@ -590,7 +591,7 @@ func (p *parser) parseFunctionDefinition(nameRequired bool) (def functionDefinit
 		return def, fmtUnexpectedToken([]tokens.TokenKind{tokens.TokenKindIdentifier}, start)
 	}
 
-	tok, err := p.expectToken(tokens.TokenKindIdentifier, tokens.TokenKindRightParen)
+	tok, err := p.expectToken(tokens.TokenKindIdentifier, tokens.TokenKindRightParen, tokens.TokenKindLeftBrace)
 	if err != nil {
 		return def, err
 	}
@@ -611,9 +612,46 @@ func (p *parser) parseFunctionDefinition(nameRequired bool) (def functionDefinit
 				return def, err
 			}
 		}
+	} else if tok.Kind == tokens.TokenKindLeftBrace {
+		def.ArgDestructure, err = p.parseFunctionArgumentDestructure()
+		if err != nil {
+			return def, err
+		}
+		if _, err := p.expectToken(tokens.TokenKindRightParen); err != nil {
+			return def, err
+		}
 	}
 
 	return def, nil
+}
+
+func (p *parser) parseFunctionArgumentDestructure() ([]string, error) {
+	argNames := make([]string, 0, 8)
+
+	tok, err := p.expectToken(tokens.TokenKindIdentifier, tokens.TokenKindRightBrace)
+	if err != nil {
+		return nil, err
+	}
+	if tok.Kind == tokens.TokenKindRightBrace {
+		return argNames, nil
+	}
+	argNames = append(argNames, tok.Literal)
+
+	for {
+		next, err := p.expectToken(tokens.TokenKindComma, tokens.TokenKindRightBrace)
+		if err != nil {
+			return nil, err
+		}
+		if next.Kind == tokens.TokenKindRightBrace {
+			return argNames, nil
+		}
+
+		argName, err := p.expectToken(tokens.TokenKindIdentifier)
+		if err != nil {
+			return nil, err
+		}
+		argNames = append(argNames, argName.Literal)
+	}
 }
 
 func (p *parser) parseType() (values.Kind, error) {

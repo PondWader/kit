@@ -51,6 +51,25 @@ Functions can also take a type check such as `fn split(str: string)`. This is
 syntactic sugar for performing **runtime** checking of the type and returning an
 error if it doesn't match.
 
+Supported function arg type annotations are currently:
+
+```kit
+string
+bool
+number
+```
+
+Functions can also destructure a single object argument:
+
+```kit
+fn load_component_packages({ url, suite, component, arch }) {
+    index_url = "${url}/dists/${suite}/${component}/binary-${arch}/Packages.xz"
+    // ...
+}
+```
+
+Destructuring currently supports key names only (no defaults or renaming).
+
 #### Objects
 
 All object properties are immutable. The values can be updated but keys cannot
@@ -78,6 +97,9 @@ A list literal can be declared like so:
 pets = [pet1, pet2]
 first_per = pets[0] // Lists are 0 indexed
 ```
+
+Bracket indexing (`value[index]`) works on indexable values and uses runtime
+index checks.
 
 Lists can be mutated:
 
@@ -125,6 +147,24 @@ fn Person(person) -> {
     }
 }
 ```
+
+#### Errors and throw
+
+Errors are nominal interface instances. The standard library provides:
+
+```kit
+Error          // Interface reference
+error(message) // Constructor function, returns an Error instance
+```
+
+Use `throw` to return an error:
+
+```kit
+throw error("could not find package")
+```
+
+`throw` requires its argument to be an instance of the standard `Error`
+interface.
 
 #### Interfaces
 

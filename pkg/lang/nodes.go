@@ -348,12 +348,32 @@ func (n NodeIndexAccess) String() string {
 }
 
 type NodeFunction struct {
-	ArgName string
-	ArgKind values.Kind
-	Body    Node
+	ArgName        string
+	ArgKind        values.Kind
+	ArgDestructure []string
+	Body           Node
 }
 
 func (n NodeFunction) Eval(e *Environment) (values.Value, *values.Error) {
+	if len(n.ArgDestructure) > 0 {
+		return values.Of(func(arg values.Value) (values.Value, *values.Error) {
+			obj, ok := arg.ToObject()
+			if !ok {
+				return values.Nil, values.NewError("expected object as function argument")
+			}
+
+			c := e.NewChild()
+			for _, argName := range n.ArgDestructure {
+				field := obj.Get(argName)
+				if field == values.Nil {
+					return values.Nil, values.NewError("missing key \"" + argName + "\" in function argument object")
+				}
+				c.SetScoped(argName, field)
+			}
+			return n.Body.Eval(c)
+		}), nil
+	}
+
 	if n.ArgName != "" {
 		return values.Of(func(arg values.Value) (values.Value, *values.Error) {
 			if n.ArgKind != values.KindUnknownKind && arg.Kind() != n.ArgKind {
@@ -371,6 +391,10 @@ func (n NodeFunction) Eval(e *Environment) (values.Value, *values.Error) {
 }
 
 func (n NodeFunction) String() string {
+	if len(n.ArgDestructure) > 0 {
+		return fmt.Sprintf("fn({%s}) %s", strings.Join(n.ArgDestructure, ", "), n.Body.String())
+	}
+
 	if n.ArgName != "" {
 		if n.ArgKind != values.KindUnknownKind {
 			return fmt.Sprintf("fn(%s: %s) %s", n.ArgName, n.ArgKind.String(), n.Body.String())
