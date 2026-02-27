@@ -2,6 +2,7 @@ package values
 
 import (
 	"reflect"
+	"strconv"
 )
 
 func Of(v any) Value {
@@ -41,6 +42,10 @@ type Keyable interface {
 
 type Callable interface {
 	Call(args ...Value) (Value, *Error)
+}
+
+type Indexable interface {
+	Index(idx int) (v Value, ok bool)
 }
 
 func (v Value) Kind() Kind {
@@ -90,6 +95,18 @@ func (v Value) Call(args ...Value) (Value, *Error) {
 		return Nil, NewError("value is not callable")
 	}
 	return c.Call(args...)
+}
+
+func (v Value) Index(idx int) (Value, *Error) {
+	i, ok := v.Obj.(Indexable)
+	if !ok {
+		return Nil, NewError("value is not indexable")
+	}
+	el, ok := i.Index(idx)
+	if !ok {
+		return Nil, NewError("index " + strconv.Itoa(idx) + " is out of bounds")
+	}
+	return el, nil
 }
 
 func (v Value) Stringify() String {

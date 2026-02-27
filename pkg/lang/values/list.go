@@ -135,6 +135,13 @@ func (l *List) Get(key string) Value {
 	}
 }
 
+func (l *List) Index(idx int) (Value, bool) {
+	if idx < 0 || idx >= l.Size() {
+		return Nil, false
+	}
+	return l.s[idx], true
+}
+
 func (l *List) AsSlice() []Value {
 	return l.s
 }
