@@ -448,6 +448,10 @@ func extractTar(tr *tar.Reader, archiveRoot string, skipBaseDir bool, ignoreDirs
 			if err := extractTarFile(tr, dst, target, os.FileMode(hdr.Mode)); err != nil {
 				return err
 			}
+		case tar.TypeSymlink:
+			if err := extractTarSymlink(dst, target, hdr.Linkname); err != nil {
+				return err
+			}
 		}
 	}
 	return nil
@@ -466,6 +470,16 @@ func extractTarFile(r io.Reader, dst *os.Root, name string, mode os.FileMode) er
 		return err
 	}
 	return f.Close()
+}
+
+func extractTarSymlink(dst *os.Root, name, target string) error {
+	if err := dst.MkdirAll(filepath.Dir(name), 0o755); err != nil {
+		return err
+	}
+	if err := dst.Remove(name); err != nil && !errors.Is(err, os.ErrNotExist) {
+		return err
+	}
+	return dst.Symlink(target, name)
 }
 
 func extractZip(zr *zip.Reader, archiveRoot string, dst *os.Root) error {
