@@ -43,6 +43,7 @@ func (e *Environment) LoadStd() {
 	e.SetScoped("fetch", std.Fetch)
 	e.SetScoped("xz", std.Xz)
 	e.SetScoped("ar", std.Ar)
+	e.SetScoped("parse_version", std.ParseVersion)
 	e.SetScoped("Error", std.Error)
 	e.SetScoped("error", std.NewError)
 }
