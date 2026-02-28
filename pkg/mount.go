@@ -52,12 +52,32 @@ func (m *Mount) LinkBin(target, linkName string) error {
 	})
 }
 
+func (m *Mount) LinkLib(target, linkName string) error {
+	return m.recordAction("link_lib", map[string]string{
+		"target":   target,
+		"linkName": linkName,
+	})
+}
+
 func (m *Mount) Enable(dir string) error {
 	// TODO: maybe track these actions in the DB before performing them to rollback if the activation does not complete
 	for _, a := range m.actions {
 		switch a.Action {
 		case "link_bin":
 			linkPath := filepath.Join(m.k.Home.BinDir(), a.Data["linkName"])
+			if err := m.k.Home.Remove(linkPath); err != nil && !errors.Is(err, os.ErrNotExist) {
+				return err
+			}
+			target := filepath.Join(dir, a.Data["target"])
+			relTarget, err := filepath.Rel(filepath.Dir(linkPath), target)
+			if err != nil {
+				return err
+			}
+			if err := m.k.Home.Symlink(relTarget, linkPath); err != nil {
+				return err
+			}
+		case "link_lib":
+			linkPath := filepath.Join(m.k.Home.LibDir(), a.Data["linkName"])
 			if err := m.k.Home.Remove(linkPath); err != nil && !errors.Is(err, os.ErrNotExist) {
 				return err
 			}

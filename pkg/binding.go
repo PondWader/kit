@@ -5,6 +5,7 @@ import (
 	"archive/zip"
 	"bytes"
 	"compress/gzip"
+	"errors"
 	"io"
 	"strings"
 	"unsafe"
@@ -146,6 +147,7 @@ func (b *installBinding) Load(env *lang.Environment) {
 		env.Set("fs", b.CreateFs().Val())
 		env.Set("link_bin_dir", values.Of(b.LinkBinDir))
 		env.Set("link_bin_file", values.Of(b.LinkBinFile))
+		env.Set("link_fhs_dirs", values.Of(b.LinkFHSDirs))
 	}
 	if b.Install != nil {
 		env.Set("install", values.ObjectFromStruct(b.Install).Val())
@@ -188,6 +190,81 @@ func (b *installBinding) LinkBinFile(pathV values.Value) error {
 	b.mountSetup = append(b.mountSetup, func(m *Mount) error {
 		return m.LinkBin(relPath, filepath.Base(path.String()))
 	})
+
+	return nil
+}
+
+func (b *installBinding) LinkFHSDirs() error {
+	binDirs := []string{"/usr/local/bin", "/usr/local/sbin", "/usr/bin", "/usr/sbin", "/bin", "/sbin"}
+	linkedBins := make(map[string]struct{})
+
+	for _, dir := range binDirs {
+		dirPath := filepath.Join(".", dir)
+		entries, err := b.RootDir.FS().(fs.ReadDirFS).ReadDir(dirPath)
+		if err != nil {
+			if errors.Is(err, os.ErrNotExist) {
+				continue
+			}
+			return err
+		}
+
+		for _, entry := range entries {
+			if entry.IsDir() {
+				continue
+			}
+
+			name := entry.Name()
+			if _, ok := linkedBins[name]; ok {
+				continue
+			}
+			linkedBins[name] = struct{}{}
+
+			target := filepath.Join(dirPath, name)
+			b.mountSetup = append(b.mountSetup, func(m *Mount) error {
+				return m.LinkBin(target, name)
+			})
+		}
+	}
+
+	libDirs := []string{"/usr/local/lib", "/usr/local/lib64", "/usr/lib", "/usr/lib64", "/lib", "/lib64"}
+	linkedLibs := make(map[string]struct{})
+
+	for _, dir := range libDirs {
+		dirPath := filepath.Join(".", dir)
+		if _, err := b.RootDir.Stat(dirPath); err != nil {
+			if errors.Is(err, os.ErrNotExist) {
+				continue
+			}
+			return err
+		}
+
+		err := fs.WalkDir(b.RootDir.FS(), dirPath, func(path string, d fs.DirEntry, err error) error {
+			if err != nil {
+				if errors.Is(err, os.ErrNotExist) {
+					return nil
+				}
+				return err
+			}
+			if d.IsDir() {
+				return nil
+			}
+
+			name := d.Name()
+			if _, ok := linkedLibs[name]; ok {
+				return nil
+			}
+			linkedLibs[name] = struct{}{}
+
+			target := path
+			b.mountSetup = append(b.mountSetup, func(m *Mount) error {
+				return m.LinkLib(target, name)
+			})
+			return nil
+		})
+		if err != nil {
+			return err
+		}
+	}
 
 	return nil
 }
