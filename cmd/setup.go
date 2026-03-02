@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/PondWader/kit/internal/ansi"
 	kit "github.com/PondWader/kit/pkg"
 )
 
@@ -29,26 +30,34 @@ var SetupCommand = Command{
 			os.Exit(1)
 		}
 
-		if err := setupBashrc(); err != nil {
+		result, err := setupBashrc()
+		if err != nil {
 			printError(err)
 			os.Exit(1)
 		}
 
-		fmt.Println("Updated ~/.bashrc with kit environment variables")
+		fmt.Printf(ansi.Cyan("Updated ~/.bashrc %s\n"), ansi.BrightBlack(fmt.Sprintf("(%d added, %d unchanged)", len(result.Added), len(result.Unchanged))))
+		for _, line := range result.Added {
+			fmt.Printf("%s %s\n", ansi.Green("+"), line)
+		}
+		for _, line := range result.Unchanged {
+			fmt.Printf("%s %s %s\n", ansi.Yellow("~"), line, ansi.BrightBlack("(already present)"))
+		}
+		fmt.Printf("%s\n", ansi.BrightBlack("Run `source ~/.bashrc` to apply changes"))
 	},
 }
 
-func setupBashrc() error {
+func setupBashrc() (bashrcUpdateResult, error) {
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
-		return err
+		return bashrcUpdateResult{}, err
 	}
 
 	bashrcPath := filepath.Join(homeDir, ".bashrc")
 
 	kitHome, err := kit.ResolveHome()
 	if err != nil {
-		return err
+		return bashrcUpdateResult{}, err
 	}
 
 	binPath := makeTransferablePath(filepath.Join(kitHome, "bin"), homeDir)
@@ -58,18 +67,20 @@ func setupBashrc() error {
 
 	contents, err := os.ReadFile(bashrcPath)
 	if err != nil && !errors.Is(err, os.ErrNotExist) {
-		return err
+		return bashrcUpdateResult{}, err
 	}
 
-	updated := prependMissingBashrcLines(string(contents), []bashrcLine{
+	result := prependMissingBashrcLines(string(contents), []bashrcLine{
 		{Comment: bashrcPathNote, Line: pathLine},
 		{Comment: bashrcLibNote, Line: ldLibraryPathLine},
 	})
-	if err := os.WriteFile(bashrcPath, []byte(updated), 0644); err != nil {
-		return err
+	if len(result.Added) > 0 {
+		if err := os.WriteFile(bashrcPath, []byte(result.Content), 0644); err != nil {
+			return bashrcUpdateResult{}, err
+		}
 	}
 
-	return nil
+	return result, nil
 }
 
 func makeTransferablePath(path, homeDir string) string {
@@ -92,23 +103,33 @@ type bashrcLine struct {
 	Line    string
 }
 
-func prependMissingBashrcLines(content string, lines []bashrcLine) string {
+type bashrcUpdateResult struct {
+	Content   string
+	Added     []string
+	Unchanged []string
+}
+
+func prependMissingBashrcLines(content string, lines []bashrcLine) bashrcUpdateResult {
 	missing := make([]string, 0, len(lines)*2)
+	addedLines := make([]string, 0, len(lines))
+	unchangedLines := make([]string, 0, len(lines))
 	for _, line := range lines {
 		if strings.Contains(content, line.Line) {
+			unchangedLines = append(unchangedLines, line.Line)
 			continue
 		}
 		missing = append(missing, line.Comment, line.Line)
+		addedLines = append(addedLines, line.Line)
 	}
 
 	if len(missing) == 0 {
-		return content
+		return bashrcUpdateResult{Content: content, Added: addedLines, Unchanged: unchangedLines}
 	}
 
 	prefix := strings.Join(missing, "\n")
 	if strings.TrimSpace(content) == "" {
-		return prefix + "\n"
+		return bashrcUpdateResult{Content: prefix + "\n", Added: addedLines, Unchanged: unchangedLines}
 	}
 
-	return prefix + "\n\n" + content
+	return bashrcUpdateResult{Content: prefix + "\n\n" + content, Added: addedLines, Unchanged: unchangedLines}
 }
