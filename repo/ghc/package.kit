@@ -3,9 +3,9 @@ export name = "ghc"
 export fn install(version) {
     distro = ""
     if sys.OS == "linux" && sys.ARCH == "amd64" {
-        distro = "x86_64-deb12-linux"
+        distro = "x86_64-unknown-linux"
     } else if sys.OS == "linux" && sys.ARCH == "arm64" {
-        distro = "aarch64-deb12-linux"
+        distro = "aarch64-unknown-linux"
     } else if sys.OS == "darwin" && sys.ARCH == "amd64" {
         distro = "x86_64-apple-darwin"
     } else if sys.OS == "darwin" && sys.ARCH == "arm64" {
