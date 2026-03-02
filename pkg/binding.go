@@ -150,7 +150,7 @@ func (b *installBinding) Load(env *lang.Environment) {
 		env.Set("link_fhs_dirs", values.Of(b.LinkFHSDirs))
 	}
 	if b.Install != nil {
-		env.Set("install", values.ObjectFromStruct(b.Install).Val())
+		env.Set("target", values.ObjectFromStruct(b.Install).Val())
 	}
 	env.ModLoader = b.loadMod
 }

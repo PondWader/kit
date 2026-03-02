@@ -20,7 +20,7 @@ export fn install(version) {
 
     // Setup ghci script
     fs.file("/bin/ghci").create_with_perms(0o744)
-        .write_and_close("#!/bin/bash\nexec ${install.mount_dir}/bin/ghc --interactive \"$@\"")
+        .write_and_close("#!/bin/bash\nexec ${target.mount_dir}/bin/ghc --interactive \"$@\"")
 
     // Create symlinks to all versions
     bin_entries = fs.dir("/bin").read_entries()
