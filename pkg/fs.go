@@ -14,7 +14,7 @@ import (
 
 func (k *Kit) setupHome() error {
 	// Resolve the home directory
-	home, err := resolveHome()
+	home, err := ResolveHome()
 	if err != nil {
 		return err
 	}
@@ -85,7 +85,7 @@ func (k *Kit) repoDirs() ([]string, error) {
 	return dirs, nil
 }
 
-func resolveHome() (string, error) {
+func ResolveHome() (string, error) {
 	// Ideally KIT_HOME should be set
 	home := os.Getenv("KIT_HOME")
 	if home != "" {

@@ -32,6 +32,7 @@ var Commands = []Command{
 	VersionsCommand,
 	PullCommand,
 	InstallCommand,
+	SetupCommand,
 }
 
 func main() {

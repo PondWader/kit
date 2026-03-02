@@ -55,6 +55,7 @@ func printHelp() {
 		{Args: "versions <package>", Desc: "lists all versions available for a package"},
 		{Args: "search <term>", Desc: "search packages"},
 		{Args: "pull", Desc: "pulls the latest version of all repositories"},
+		{Args: "setup bashrc", Desc: "adds kit bin/lib exports to ~/.bashrc"},
 	}) + "\n")
 }
 
