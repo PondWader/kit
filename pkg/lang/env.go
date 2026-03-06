@@ -89,7 +89,7 @@ func (e *Environment) Execute(prog []Node) *values.Error {
 		if _, err := n.Eval(e); err != nil {
 			return err
 		}
-		if e.control.Returned {
+		if e.control.Flow != FlowNone {
 			return nil
 		}
 	}
@@ -126,7 +126,23 @@ func (e *Environment) Return(v values.Value) *values.Error {
 		return values.NewError("return not allowed in this context")
 	}
 	e.control.ReturnVal = v
-	e.control.Returned = true
+	e.control.Flow = FlowReturn
+	return nil
+}
+
+func (e *Environment) Break() *values.Error {
+	if e.control == nil || e.control.LoopDepth == 0 {
+		return values.NewError("break not allowed in this context")
+	}
+	e.control.Flow = FlowBreak
+	return nil
+}
+
+func (e *Environment) Continue() *values.Error {
+	if e.control == nil || e.control.LoopDepth == 0 {
+		return values.NewError("continue not allowed in this context")
+	}
+	e.control.Flow = FlowContinue
 	return nil
 }
 
@@ -143,10 +159,20 @@ func (e *Environment) Import(modName string) *values.Error {
 }
 
 type ExecutionControl struct {
+	Flow          FlowState
+	LoopDepth     int
 	ReturnAllowed bool
 	ReturnVal     values.Value
-	Returned      bool
 }
+
+type FlowState uint8
+
+const (
+	FlowNone FlowState = iota
+	FlowReturn
+	FlowBreak
+	FlowContinue
+)
 
 func NewExec() *ExecutionControl {
 	return &ExecutionControl{}

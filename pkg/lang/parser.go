@@ -120,6 +120,10 @@ func (p *parser) parseStatementFromToken(tok tokens.Token) (n Node, err error) {
 		return p.parseFunction()
 	case tokens.TokenKindReturn:
 		return p.parseReturn()
+	case tokens.TokenKindBreak:
+		return p.parseBreak()
+	case tokens.TokenKindContinue:
+		return p.parseContinue()
 	case tokens.TokenKindThrow:
 		return p.parseThrow()
 	case tokens.TokenKindIf:
@@ -238,6 +242,14 @@ func (p *parser) parseReturn() (n NodeReturn, err error) {
 func (p *parser) parseThrow() (n NodeThrow, err error) {
 	n.Val, err = p.parseExpression()
 	return n, err
+}
+
+func (p *parser) parseBreak() (NodeBreak, error) {
+	return NodeBreak{}, nil
+}
+
+func (p *parser) parseContinue() (NodeContinue, error) {
+	return NodeContinue{}, nil
 }
 
 func (p *parser) parseIf() (n NodeIf, err error) {

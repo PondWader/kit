@@ -111,3 +111,128 @@ func TestNotEqualsEvaluatesCorrectly(t *testing.T) {
 		t.Fatalf("unexpected value: got %v want %v", b, true)
 	}
 }
+
+func TestBreakExitsLoopEarly(t *testing.T) {
+	env, err := Execute(strings.NewReader("count = 0\nfor item in [1, 2, 3, 4] {\n    count = count + 1\n    if item == 2 {\n        break\n    }\n}\n"))
+	if err != nil {
+		t.Fatalf("execute failed: %v", err)
+	}
+
+	count, getErr := env.Get("count")
+	if getErr != nil {
+		t.Fatalf("missing count: %v", getErr)
+	}
+
+	num, ok := count.ToNumber()
+	if !ok {
+		t.Fatalf("count is not numeric: %#v", count)
+	}
+	if num != 2 {
+		t.Fatalf("unexpected count: got %v want %v", num, 2)
+	}
+}
+
+func TestContinueSkipsCurrentIteration(t *testing.T) {
+	env, err := Execute(strings.NewReader("count = 0\nfor item in [1, 2, 3, 4] {\n    if item == 2 {\n        continue\n    }\n    count = count + item\n}\n"))
+	if err != nil {
+		t.Fatalf("execute failed: %v", err)
+	}
+
+	count, getErr := env.Get("count")
+	if getErr != nil {
+		t.Fatalf("missing count: %v", getErr)
+	}
+
+	num, ok := count.ToNumber()
+	if !ok {
+		t.Fatalf("count is not numeric: %#v", count)
+	}
+	if num != 8 {
+		t.Fatalf("unexpected count: got %v want %v", num, 8)
+	}
+}
+
+func TestNestedBreakOnlyExitsInnerLoop(t *testing.T) {
+	env, err := Execute(strings.NewReader("count = 0\nfor outer in [1, 2, 3] {\n    for inner in [10, 20, 30] {\n        count = count + 1\n        if inner == 20 {\n            break\n        }\n    }\n}\n"))
+	if err != nil {
+		t.Fatalf("execute failed: %v", err)
+	}
+
+	count, getErr := env.Get("count")
+	if getErr != nil {
+		t.Fatalf("missing count: %v", getErr)
+	}
+
+	num, ok := count.ToNumber()
+	if !ok {
+		t.Fatalf("count is not numeric: %#v", count)
+	}
+	if num != 6 {
+		t.Fatalf("unexpected count: got %v want %v", num, 6)
+	}
+}
+
+func TestNestedContinueOnlySkipsInnerIteration(t *testing.T) {
+	env, err := Execute(strings.NewReader("count = 0\nfor outer in [1, 2] {\n    for inner in [10, 20, 30] {\n        if inner == 20 {\n            continue\n        }\n        count = count + 1\n    }\n}\n"))
+	if err != nil {
+		t.Fatalf("execute failed: %v", err)
+	}
+
+	count, getErr := env.Get("count")
+	if getErr != nil {
+		t.Fatalf("missing count: %v", getErr)
+	}
+
+	num, ok := count.ToNumber()
+	if !ok {
+		t.Fatalf("count is not numeric: %#v", count)
+	}
+	if num != 4 {
+		t.Fatalf("unexpected count: got %v want %v", num, 4)
+	}
+}
+
+func TestBreakOutsideLoopErrors(t *testing.T) {
+	_, err := Execute(strings.NewReader("break\n"))
+	if err == nil {
+		t.Fatal("expected break outside loop to fail")
+	}
+	if err.Error() != "break not allowed in this context" {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestContinueOutsideLoopErrors(t *testing.T) {
+	_, err := Execute(strings.NewReader("continue\n"))
+	if err == nil {
+		t.Fatal("expected continue outside loop to fail")
+	}
+	if err.Error() != "continue not allowed in this context" {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestReturnInsideLoopEscapesFunction(t *testing.T) {
+	env, err := Execute(strings.NewReader("fn test() {\n    for item in [1, 2, 3] {\n        if item == 2 {\n            return item\n        }\n    }\n    return 0\n}\n"))
+	if err != nil {
+		t.Fatalf("execute failed: %v", err)
+	}
+
+	testFn, getErr := env.Get("test")
+	if getErr != nil {
+		t.Fatalf("missing test: %v", getErr)
+	}
+
+	out, callErr := testFn.Call()
+	if callErr != nil {
+		t.Fatalf("call failed: %v", callErr)
+	}
+
+	num, ok := out.ToNumber()
+	if !ok {
+		t.Fatalf("out is not numeric: %#v", out)
+	}
+	if num != 2 {
+		t.Fatalf("unexpected out: got %v want %v", num, 2)
+	}
+}

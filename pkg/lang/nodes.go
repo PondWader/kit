@@ -421,6 +421,26 @@ func (n NodeReturn) String() string {
 	return "return " + n.Val.String()
 }
 
+type NodeBreak struct{}
+
+func (n NodeBreak) Eval(e *Environment) (values.Value, *values.Error) {
+	return values.Nil, e.Break()
+}
+
+func (n NodeBreak) String() string {
+	return "break"
+}
+
+type NodeContinue struct{}
+
+func (n NodeContinue) Eval(e *Environment) (values.Value, *values.Error) {
+	return values.Nil, e.Continue()
+}
+
+func (n NodeContinue) String() string {
+	return "continue"
+}
+
 type NodeThrow struct {
 	Val Node
 }
@@ -762,11 +782,28 @@ func (n NodeForInLoop) Eval(e *Environment) (values.Value, *values.Error) {
 		return values.Nil, values.FmtTypeError("for "+n.Var+" in ?", values.KindList)
 	}
 
+	e.control.LoopDepth++
+	defer func() {
+		e.control.LoopDepth--
+	}()
+
 	for _, v := range l.AsSlice() {
 		scope := e.NewChild()
 		scope.SetScoped(n.Var, v)
 		if _, err = n.Body.Eval(scope); err != nil {
 			return values.Nil, err
+		}
+
+		switch e.control.Flow {
+		case FlowNone:
+		case FlowContinue:
+			e.control.Flow = FlowNone
+			continue
+		case FlowBreak:
+			e.control.Flow = FlowNone
+			return values.Nil, nil
+		case FlowReturn:
+			return values.Nil, nil
 		}
 	}
 	return values.Nil, nil

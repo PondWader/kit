@@ -33,7 +33,7 @@ func (k *Kit) setupHome() error {
 	}
 
 	// Make all the missing directories
-	dirs := [5]string{"bin", "lib", "repos", "packages", "tmp"}
+	dirs := [6]string{"bin", "lib", "repos", "packages", "applications", "tmp"}
 	for _, dir := range dirs {
 		if !slices.ContainsFunc(entries, func(e os.DirEntry) bool {
 			return e.Name() == dir
