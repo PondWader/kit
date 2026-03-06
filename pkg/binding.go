@@ -141,9 +141,9 @@ func (b *installBinding) createDirBuilder(path string) values.Value {
 
 func (b *installBinding) Load(env *lang.Environment) {
 	env.Set("sys", b.CreateSys().Val())
+	env.Set("tar", b.CreateTar().Val())
+	env.Set("zip", b.CreateZip().Val())
 	if b.RootDir != nil {
-		env.Set("tar", b.CreateTar().Val())
-		env.Set("zip", b.CreateZip().Val())
 		env.Set("fs", b.CreateFs().Val())
 		env.Set("link_bin_dir", values.Of(b.LinkBinDir))
 		env.Set("link_bin_file", values.Of(b.LinkBinFile))
@@ -290,6 +290,10 @@ type tarLayer struct {
 }
 
 func (tl tarLayer) Extract(src values.Value) (values.Value, *values.Error) {
+	if tl.b.RootDir == nil {
+		return values.Nil, values.NewError("archives cannot be extracted in this context")
+	}
+
 	srcObj, ok := src.ToObject()
 	if !ok {
 		return values.Nil, values.NewError("expected readable i/o object as argument to tar.gz.extract")
@@ -339,6 +343,9 @@ func (tl tarLayer) Extract(src values.Value) (values.Value, *values.Error) {
 		}
 
 		resolvedDst := filepath.Join(".", string(dstStr))
+		if err = tl.b.RootDir.MkdirAll(resolvedDst, 0o755); err != nil {
+			return err
+		}
 		root, err := tl.b.RootDir.OpenRoot(resolvedDst)
 		if err != nil {
 			return err
@@ -354,6 +361,10 @@ type zipBinding struct {
 }
 
 func (z zipBinding) Extract(src values.Value) (values.Value, *values.Error) {
+	if z.b.RootDir == nil {
+		return values.Nil, values.NewError("archives cannot be extracted in this context")
+	}
+
 	srcObj, ok := src.ToObject()
 	if !ok {
 		return values.Nil, values.NewError("expected readable i/o object as argument to zip.extract")

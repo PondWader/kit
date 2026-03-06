@@ -1,0 +1,57 @@
+export name = "ghostty"
+
+export fn install(version) {
+    // Download ghostty source
+    source_url = "https://release.files.ghostty.org/${version}/ghostty-${version}.tar.gz"
+    if version == "tip" {
+        source_url = "https://github.com/ghostty-org/ghostty/releases/download/tip/ghostty-source.tar.gz"
+    }
+
+    // TODO: minisign verification
+    resp = fetch(source_url)
+    tar.gz.extract(resp).skipping_base_dir().to("/source")
+
+
+    // Setup installation environment with Zig
+    install_env = env.create_env()
+    install_env.package("zig").install_version(zig_version_from_source())
+    cache_dir = fs.dir("/tmp-zig-cache").create()
+    
+    // Download dependencies
+    // install_env.exec({
+    //     command = "./nix/build-support/fetch-zig-cache.sh"
+    //     cwd = "/source"
+    //     env = {
+    //         ZIG_GLOBAL_CACHE_DIR = install_env.resolve_path(cache_dir.path)
+    //     }
+    // })
+
+    // // Perform the build
+    // install_env.exec({
+    //     command = "zig build --system ${cache_dir.machine_path}/p -Doptimize=ReleaseFast -Dcpu=baseline"
+    //     cwd = "/source"
+    //     env = {
+    //         DESTDIR = install_env.resolve_path("/")
+    //     }
+    // })
+}
+
+export fn versions() {
+    // git.repository("https://github.com/ghostty-org/ghostty")
+    //     .list_tags()
+    // todo: make this work
+    return ["tip"]
+}
+
+fn zig_version_from_source() {
+    zon = fs.file("/source/build.zig.zon").text()
+    for line in zon.split("\n") {
+        trimmed = line.trim_whitespace()
+        if trimmed.starts_with(".minimum_zig_version = \"") {
+            return trimmed
+                .remove_prefix(".minimum_zig_version = \"")
+                .remove_suffix("\",")
+        }
+    }
+    throw error("could not determine Zig version from /source/build.zig.zon")
+}
