@@ -328,6 +328,8 @@ func (p *parser) parseExpressionFromTokenPrec(tok tokens.Token, minPrec int) (No
 	var node Node
 	var err error
 	switch tok.Kind {
+	case tokens.TokenKindPlus, tokens.TokenKindMinus:
+		node, err = p.parseUnaryOp(tok.Kind)
 	case tokens.TokenKindIdentifier:
 		node = NodeIdentifier{Ident: tok.Literal}
 	case tokens.TokenKindNumberLiteral:
@@ -367,6 +369,10 @@ func precedenceOf(kind tokens.TokenKind) int {
 	case tokens.TokenKindLessThan, tokens.TokenKindLessThanOrEqual,
 		tokens.TokenKindGreaterThan, tokens.TokenKindGreaterThanOrEqual:
 		return 4
+	case tokens.TokenKindPlus, tokens.TokenKindMinus:
+		return 5
+	case tokens.TokenKindMultiply, tokens.TokenKindDivide, tokens.TokenKindModulo:
+		return 6
 	default:
 		return 0
 	}
@@ -391,7 +397,8 @@ func (p *parser) parseOperation(node Node, minPrec int) (Node, error) {
 		case tokens.TokenKindArrow:
 			node, err = p.parseLambda(node)
 		case tokens.TokenKindEquals, tokens.TokenKindNotEquals, tokens.TokenKindLessThan, tokens.TokenKindLessThanOrEqual,
-			tokens.TokenKindGreaterThan, tokens.TokenKindGreaterThanOrEqual, tokens.TokenKindLogicalAnd, tokens.TokenKindLogicalOr:
+			tokens.TokenKindGreaterThan, tokens.TokenKindGreaterThanOrEqual, tokens.TokenKindLogicalAnd, tokens.TokenKindLogicalOr,
+			tokens.TokenKindPlus, tokens.TokenKindMinus, tokens.TokenKindMultiply, tokens.TokenKindDivide, tokens.TokenKindModulo:
 			prec := precedenceOf(next.Kind)
 			if prec < minPrec {
 				p.l.Unread(next)
@@ -491,6 +498,26 @@ func (p *parser) parseIndexAccess(node Node) (n NodeIndexAccess, err error) {
 	n.Val = node
 	n.Index = idxExpr
 	return
+}
+
+func (p *parser) parseUnaryOp(op tokens.TokenKind) (Node, error) {
+	tok, err := p.nextAfterWhiteSpace()
+	if err != nil {
+		return nil, err
+	}
+	inner, err := p.parseExpressionFromTokenPrec(tok, precedenceOf(tokens.TokenKindMultiply)+1)
+	if err != nil {
+		return nil, err
+	}
+
+	switch op {
+	case tokens.TokenKindPlus:
+		return NodeUnaryNumberOp{Inner: inner, Op: UnaryNumberOpIdentity}, nil
+	case tokens.TokenKindMinus:
+		return NodeUnaryNumberOp{Inner: inner, Op: UnaryNumberOpNegate}, nil
+	default:
+		return nil, errors.New("unexpected unary operation: " + op.String())
+	}
 }
 
 func (p *parser) parseLambda(arg Node) (n NodeFunction, err error) {
@@ -734,6 +761,16 @@ func (p *parser) parseBinaryOp(left Node, op tokens.TokenKind, prec int) (Node, 
 		return NodeLogicalOp{Left: left, Right: right, Op: LogicalOpAnd}, nil
 	case tokens.TokenKindLogicalOr:
 		return NodeLogicalOp{Left: left, Right: right, Op: LogicalOpOr}, nil
+	case tokens.TokenKindPlus:
+		return NodeArithmeticOp{Left: left, Right: right, Op: ArithmeticOpAdd}, nil
+	case tokens.TokenKindMinus:
+		return NodeArithmeticOp{Left: left, Right: right, Op: ArithmeticOpSubtract}, nil
+	case tokens.TokenKindMultiply:
+		return NodeArithmeticOp{Left: left, Right: right, Op: ArithmeticOpMultiply}, nil
+	case tokens.TokenKindDivide:
+		return NodeArithmeticOp{Left: left, Right: right, Op: ArithmeticOpDivide}, nil
+	case tokens.TokenKindModulo:
+		return NodeArithmeticOp{Left: left, Right: right, Op: ArithmeticOpModulo}, nil
 	default:
 		return nil, errors.New("unexpected binary operation: " + op.String())
 	}

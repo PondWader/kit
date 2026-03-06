@@ -555,6 +555,122 @@ func (n NodeNumberComparison) OpSymbol() string {
 	return op
 }
 
+type ArithmeticOp uint8
+
+const (
+	ArithmeticOpAdd ArithmeticOp = iota
+	ArithmeticOpSubtract
+	ArithmeticOpMultiply
+	ArithmeticOpDivide
+	ArithmeticOpModulo
+)
+
+func (op ArithmeticOp) String() string {
+	switch op {
+	case ArithmeticOpAdd:
+		return "+"
+	case ArithmeticOpSubtract:
+		return "-"
+	case ArithmeticOpMultiply:
+		return "*"
+	case ArithmeticOpDivide:
+		return "/"
+	case ArithmeticOpModulo:
+		return "%"
+	default:
+		return "<invalid op>"
+	}
+}
+
+type NodeArithmeticOp struct {
+	Left  Node
+	Right Node
+	Op    ArithmeticOp
+}
+
+func (n NodeArithmeticOp) Eval(e *Environment) (values.Value, *values.Error) {
+	leftV, err := n.Left.Eval(e)
+	if err != nil {
+		return values.Nil, err
+	}
+	rightV, err := n.Right.Eval(e)
+	if err != nil {
+		return values.Nil, err
+	}
+
+	left, ok := leftV.ToNumber()
+	if !ok {
+		return values.Nil, values.FmtTypeError(n.Op.String(), values.KindNumber)
+	}
+	right, ok := rightV.ToNumber()
+	if !ok {
+		return values.Nil, values.FmtTypeError(n.Op.String(), values.KindNumber)
+	}
+
+	switch n.Op {
+	case ArithmeticOpAdd:
+		return values.Of(left + right), nil
+	case ArithmeticOpSubtract:
+		return values.Of(left - right), nil
+	case ArithmeticOpMultiply:
+		return values.Of(left * right), nil
+	case ArithmeticOpDivide:
+		return values.Of(left / right), nil
+	case ArithmeticOpModulo:
+		return values.Of(math.Mod(left, right)), nil
+	default:
+		return values.Nil, values.NewError("invalid arithmetic operator")
+	}
+}
+
+func (n NodeArithmeticOp) String() string {
+	return n.Left.String() + " " + n.Op.String() + " " + n.Right.String()
+}
+
+type UnaryNumberOp uint8
+
+const (
+	UnaryNumberOpIdentity UnaryNumberOp = iota
+	UnaryNumberOpNegate
+)
+
+func (op UnaryNumberOp) String() string {
+	switch op {
+	case UnaryNumberOpIdentity:
+		return "+"
+	case UnaryNumberOpNegate:
+		return "-"
+	default:
+		return "<invalid unary op>"
+	}
+}
+
+type NodeUnaryNumberOp struct {
+	Inner Node
+	Op    UnaryNumberOp
+}
+
+func (n NodeUnaryNumberOp) Eval(e *Environment) (values.Value, *values.Error) {
+	v, err := n.Inner.Eval(e)
+	if err != nil {
+		return values.Nil, err
+	}
+
+	num, ok := v.ToNumber()
+	if !ok {
+		return values.Nil, values.FmtTypeError(n.Op.String(), values.KindNumber)
+	}
+
+	if n.Op == UnaryNumberOpNegate {
+		return values.Of(-num), nil
+	}
+	return values.Of(num), nil
+}
+
+func (n NodeUnaryNumberOp) String() string {
+	return n.Op.String() + n.Inner.String()
+}
+
 type NodeNot struct {
 	Inner Node
 }
