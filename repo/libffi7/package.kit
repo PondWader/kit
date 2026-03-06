@@ -9,6 +9,7 @@ export fn install(version) {
     deb.repository(ubuntu_repo_name)
         .packages()
         .find("libffi7")
+        .assert_version(version)
         .install()
 }
 
