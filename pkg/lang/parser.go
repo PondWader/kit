@@ -328,7 +328,7 @@ func (p *parser) parseExpressionFromTokenPrec(tok tokens.Token, minPrec int) (No
 	var node Node
 	var err error
 	switch tok.Kind {
-	case tokens.TokenKindPlus, tokens.TokenKindMinus:
+	case tokens.TokenKindPlus, tokens.TokenKindMinus, tokens.TokenKindLogicalNot:
 		node, err = p.parseUnaryOp(tok.Kind)
 	case tokens.TokenKindIdentifier:
 		node = NodeIdentifier{Ident: tok.Literal}
@@ -515,6 +515,8 @@ func (p *parser) parseUnaryOp(op tokens.TokenKind) (Node, error) {
 		return NodeUnaryNumberOp{Inner: inner, Op: UnaryNumberOpIdentity}, nil
 	case tokens.TokenKindMinus:
 		return NodeUnaryNumberOp{Inner: inner, Op: UnaryNumberOpNegate}, nil
+	case tokens.TokenKindLogicalNot:
+		return NodeNot{Inner: inner}, nil
 	default:
 		return nil, errors.New("unexpected unary operation: " + op.String())
 	}

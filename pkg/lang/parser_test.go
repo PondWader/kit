@@ -71,3 +71,43 @@ func TestUnaryMinusEvaluatesCorrectly(t *testing.T) {
 		t.Fatalf("unexpected value: got %v want %v", num, 2)
 	}
 }
+
+func TestLogicalNotEvaluatesCorrectly(t *testing.T) {
+	env, err := Execute(strings.NewReader("value = !false\n"))
+	if err != nil {
+		t.Fatalf("execute failed: %v", err)
+	}
+
+	value, getErr := env.Get("value")
+	if getErr != nil {
+		t.Fatalf("missing value: %v", getErr)
+	}
+
+	b, ok := value.ToBool()
+	if !ok {
+		t.Fatalf("value is not boolean: %#v", value)
+	}
+	if !b {
+		t.Fatalf("unexpected value: got %v want %v", b, true)
+	}
+}
+
+func TestNotEqualsEvaluatesCorrectly(t *testing.T) {
+	env, err := Execute(strings.NewReader("value = 1 != 2\n"))
+	if err != nil {
+		t.Fatalf("execute failed: %v", err)
+	}
+
+	value, getErr := env.Get("value")
+	if getErr != nil {
+		t.Fatalf("missing value: %v", getErr)
+	}
+
+	b, ok := value.ToBool()
+	if !ok {
+		t.Fatalf("value is not boolean: %#v", value)
+	}
+	if !b {
+		t.Fatalf("unexpected value: got %v want %v", b, true)
+	}
+}
