@@ -11,7 +11,7 @@ export fn install(version) {
     } else if sys.OS == "darwin" && sys.ARCH == "arm64" {
         distro = "aarch64-apple-darwin"
     } else {
-        // TODO: error?
+        throw error("no build available for ${sys.ARCH} ${sys.OS}")
     }
 
     name = "haskell-language-server-${version}-${distro}"
