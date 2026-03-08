@@ -4,7 +4,7 @@
 
 ## Installation
 
-Download and build the latest commit by using kitup:
+Download and build the latest commit by using kitup (requires git and curl to be on your system):
 
 ```bash
 # Download kitup

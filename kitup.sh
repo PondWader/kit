@@ -29,7 +29,7 @@ case $(uname -m) in
     *) echo "Unsupported architecture: $(uname -m)"; exit 1 ;;
 esac
 
-wget -O "$install_dir/go.tar.gz" "https://go.dev/dl/go${GO_VERSION}.linux-${GOARCH}.tar.gz"
+curl -L -o "$install_dir/go.tar.gz" "https://go.dev/dl/go${GO_VERSION}.linux-${GOARCH}.tar.gz"
 tar xf "$install_dir/go.tar.gz" -C "$install_dir"
 
 # Build the executeable
