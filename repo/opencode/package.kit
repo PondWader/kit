@@ -1,0 +1,24 @@
+export name = "opencode"
+
+export fn install(version) {
+    build = ""
+    if sys.OS == "linux" && sys.ARCH == "amd64" {
+        build = "linux-x64"
+    } else if sys.OS == "linux" && sys.ARCH == "arm64" {
+       build = "linux-arm64"
+    } else {
+       throw error("no build available for ${sys.ARCH} ${sys.OS}")
+    }
+
+    name = "opencode-${build}.tar.gz"
+    resp = fetch("https://github.com/anomalyco/opencode/releases/download/v${version}/${name}")
+    tar.gz.extract(resp).to("/")
+
+    link_bin_file("/opencode")
+}
+
+export fn versions() {
+    return fetch("https://api.github.com/repos/anomalyco/opencode/releases")
+        .json()
+        .map(release -> release.tag_name.remove_prefix("v"))
+}
