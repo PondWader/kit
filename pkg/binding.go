@@ -490,7 +490,11 @@ func extractZip(zr *zip.Reader, archiveRoot string, dst *os.Root) error {
 		}
 
 		if file.FileInfo().IsDir() {
-			if err := dst.MkdirAll(target, file.Mode()); err != nil {
+			mode := file.Mode().Perm()
+			if mode == 0 {
+				mode = 0o755
+			}
+			if err := dst.MkdirAll(target, mode); err != nil {
 				return err
 			}
 			continue
