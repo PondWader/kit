@@ -1,0 +1,24 @@
+import "deb"
+
+export name = "cloudflare-warp"
+
+cloudflare_repo_name = "https://pkg.cloudflareclient.com bookworm main"
+
+export fn install(version) {
+    if sys.OS != "linux" {
+        throw error("no build available for ${sys.ARCH} ${sys.OS}")
+    }
+
+    deb.repository(cloudflare_repo_name)
+        .packages()
+        .find("cloudflare-warp")
+        .assert_version(version)
+        .install()
+}
+
+export fn versions() {
+    package = deb.repository(cloudflare_repo_name)
+        .packages()
+        .find("cloudflare-warp")
+    return [package.version]
+}

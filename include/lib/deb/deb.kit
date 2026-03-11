@@ -36,6 +36,21 @@ export fn repository(source: string) {
     }
 }
 
+export fn open(src) {
+    archive = ar(src)
+    control_tar = archive_member({ archive = archive; base_name = "control.tar" })
+    control = open_compressed_tar(control_tar).file("control").text()
+
+    return package_from_stanza({
+        raw = control
+        source = ""
+        component = ""
+        filename = ""
+        sha256 = ""
+        archive = archive
+    })
+}
+
 fn deb_arch(arch) {
     if arch == "amd64" {
         return "amd64"
@@ -46,8 +61,13 @@ fn deb_arch(arch) {
 }
 
 fn load_component_packages({ url, suite, component, arch }) {
-    index_url = "${url}/dists/${suite}/${component}/binary-${arch}/Packages.xz"
-    index = xz(fetch(index_url)).text()
+    index_url = resolve_package_index_url({
+        url = url
+        suite = suite
+        component = component
+        arch = arch
+    })
+    index = read_package_index(index_url)
 
     return index
         .split("\n\n")
@@ -55,8 +75,37 @@ fn load_component_packages({ url, suite, component, arch }) {
             raw = raw
             source = url
             component = component
+            filename = ""
+            sha256 = ""
+            archive = ""
         }))
         .filter(pkg -> pkg.name != "")
+}
+
+fn resolve_package_index_url({ url, suite, component, arch }) {
+    release = fetch("${url}/dists/${suite}/Release").text()
+    base = "${component}/binary-${arch}/Packages"
+
+    for suffix in [".xz", ".gz", ""] {
+        path = "${base}${suffix}"
+        for line in release.split("\n") {
+            if line.trim_whitespace().ends_with(path) {
+                return "${url}/dists/${suite}/${path}"
+            }
+        }
+    }
+
+    throw error("could not find package index for ${base} in release metadata")
+}
+
+fn read_package_index(index_url) {
+    if index_url.ends_with(".xz") {
+        return xz(fetch(index_url)).text()
+    } else if index_url.ends_with(".gz") {
+        return gz(fetch(index_url)).text()
+    }
+
+    return fetch(index_url).text()
 }
 
 fn package_from_stanza(args) {
@@ -80,14 +129,25 @@ fn package_from_stanza(args) {
         }
     }
 
+    resolved_filename = filename
+    if args.filename != "" {
+        resolved_filename = args.filename
+    }
+
+    resolved_sha256 = sha256
+    if args.sha256 != "" {
+        resolved_sha256 = args.sha256
+    }
+
     return Package({
         name = name
         version = version
-        filename = filename
+        filename = resolved_filename
         architecture = architecture
-        sha256 = sha256
+        sha256 = resolved_sha256
         source = args.source
         component = args.component
+        archive = args.archive
     })
 }
 
@@ -109,12 +169,65 @@ fn Package(spec) {
         }
 
         fn install() {
-            deb_url = "${spec.source}/${spec.filename.remove_prefix("/")}"
-            data_tar = ar(fetch(deb_url)).file("data.tar.xz")
-            tar.xz.extract(data_tar).to("/")
+            archive = spec.archive
+            if filename != "" {
+                deb_url = "${spec.source}/${spec.filename.remove_prefix("/")}"
+                archive = ar(fetch(deb_url))
+            }
+
+            data_tar = archive_member({ archive = archive; base_name = "data.tar" })
+            extract_compressed_tar(data_tar).to("/")
             link_fhs_dirs()
         }
     }
 
     return pkg
+}
+
+fn archive_member({ archive, base_name }) {
+    if archive.has_file("${base_name}.xz") {
+        return {
+            name = "${base_name}.xz"
+            compression = "xz"
+            file = archive.file("${base_name}.xz")
+        }
+    } else if archive.has_file("${base_name}.gz") {
+        return {
+            name = "${base_name}.gz"
+            compression = "gz"
+            file = archive.file("${base_name}.gz")
+        }
+    } else if archive.has_file("${base_name}.zst") {
+        return {
+            name = "${base_name}.zst"
+            compression = "zst"
+            file = archive.file("${base_name}.zst")
+        }
+    }
+
+    throw error("could not find ${base_name}.{{xz,gz,zst}} in deb archive")
+}
+
+fn open_compressed_tar(member) {
+    if member.compression == "xz" {
+        return tar.xz.open(member.file)
+    } else if member.compression == "gz" {
+        return tar.gz.open(member.file)
+    } else if member.compression == "zst" {
+        return tar.zst.open(member.file)
+    }
+
+    throw error("unsupported tar compression \"${member.compression}\"")
+}
+
+fn extract_compressed_tar(member) {
+    if member.compression == "xz" {
+        return tar.xz.extract(member.file)
+    } else if member.compression == "gz" {
+        return tar.gz.extract(member.file)
+    } else if member.compression == "zst" {
+        return tar.zst.extract(member.file)
+    }
+
+    throw error("unsupported tar compression \"${member.compression}\"")
 }
