@@ -1,0 +1,29 @@
+export name = "protobuf-compiler"
+
+export fn install(version) {
+    build = ""
+    if sys.OS == "linux" && sys.ARCH == "amd64" {
+        build = "linux-x86_64"
+    } else if sys.OS == "linux" && sys.ARCH == "arm64" {
+        build = "linux-aarch_64"
+    } else if sys.OS == "darwin" && sys.ARCH == "amd64" {
+        build = "osx-x86_64"
+    } else if sys.OS == "darwin" && sys.ARCH == "arm64" {
+        build = "osx-aarch_64"
+    } else {
+        throw error("no build available for ${sys.ARCH} ${sys.OS}")
+    }
+
+    name = "protoc-${version}-${build}.zip"
+    resp = fetch("https://github.com/protocolbuffers/protobuf/releases/download/v${version}/${name}")
+    zip.extract(resp).to("/")
+
+    link_bin_dir("/bin")
+}
+
+export fn versions() {
+    return fetch("https://api.github.com/repos/protocolbuffers/protobuf/releases")
+        .json()
+        .filter(release -> !release.prerelease)
+        .map(release -> release.tag_name.remove_prefix("v"))
+}
