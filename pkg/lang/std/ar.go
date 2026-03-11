@@ -86,6 +86,45 @@ func (a arArchive) File(name values.Value) (values.Value, error) {
 
 }
 
+func (a arArchive) HasFile(name values.Value) (values.Value, error) {
+	nameStr, ok := name.ToString()
+	if !ok {
+		return values.Nil, values.FmtTypeError("ar(...).has_file", values.KindString)
+	}
+	if a.state == nil {
+		return values.Nil, values.NewError("ar archive is invalid")
+	}
+
+	fileName := nameStr.String()
+
+	if _, ok := a.state.files[fileName]; ok {
+		return values.Of(true), nil
+	}
+
+	for !a.state.done {
+		hdr, err := a.state.reader.Next()
+		if errors.Is(err, io.EOF) {
+			a.state.done = true
+			break
+		}
+		if err != nil {
+			return values.Nil, err
+		}
+
+		fileContents, err := io.ReadAll(a.state.reader)
+		if err != nil {
+			return values.Nil, err
+		}
+
+		a.state.files[hdr.Name] = fileContents
+		if hdr.Name == fileName {
+			return values.Of(true), nil
+		}
+	}
+
+	return values.Of(false), nil
+}
+
 type arFile struct {
 	r *bytes.Reader
 }

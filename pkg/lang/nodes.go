@@ -48,7 +48,7 @@ func (n NodeImport) Eval(e *Environment) (values.Value, *values.Error) {
 func (n NodeImport) String() string {
 	quoted := make([]string, len(n.Modules))
 	for i, mod := range n.Modules {
-		quoted[i] = mod
+		quoted[i] = `"` + mod + `"`
 	}
 	return "import " + strings.Join(quoted, ",")
 }

@@ -17,6 +17,7 @@ import (
 
 	"github.com/PondWader/kit/pkg/lang"
 	"github.com/PondWader/kit/pkg/lang/values"
+	"github.com/klauspost/compress/zstd"
 	"github.com/ulikunitz/xz"
 )
 
@@ -46,6 +47,9 @@ func (b *installBinding) CreateTar() *values.Object {
 		}},
 		Xz: tarLayer{b: b, newReader: func(r io.Reader) (io.Reader, error) {
 			return xz.NewReader(r)
+		}},
+		Zst: tarLayer{b: b, newReader: func(r io.Reader) (io.Reader, error) {
+			return zstd.NewReader(r)
 		}},
 	})
 }
@@ -98,7 +102,19 @@ func (b *installBinding) createFileBuilder(path string) values.Value {
 	obj.Put("write_and_close", values.Of(func(content values.Value) error {
 		contentStr, ok := content.ToString()
 		if !ok {
-			return values.FmtTypeError("fs.file(...).write_and_close", values.KindString)
+			contentObj, ok := content.ToObject()
+			if !ok {
+				return values.FmtTypeError("fs.file(...).write_and_close", values.KindString)
+			}
+			r, ok := contentObj.Binding.(io.Reader)
+			if !ok {
+				return values.FmtTypeError("fs.file(...).write_and_close", values.KindString)
+			}
+			if _, err := fh.ReadFrom(r); err != nil {
+				fh.Close()
+				return err
+			}
+			return fh.Close()
 		}
 		contentBytes := unsafe.Slice(unsafe.StringData(contentStr.String()), len(contentStr.String()))
 		if _, err := fh.Write(contentBytes); err != nil {
@@ -279,9 +295,10 @@ func (b *installBinding) SetupMount(m *Mount) error {
 }
 
 type tarBinding struct {
-	b  *installBinding
-	Gz tarLayer
-	Xz tarLayer
+	b   *installBinding
+	Gz  tarLayer
+	Xz  tarLayer
+	Zst tarLayer
 }
 
 type tarLayer struct {
@@ -333,6 +350,9 @@ func (tl tarLayer) Extract(src values.Value) (values.Value, *values.Error) {
 		if !ok {
 			return values.FmtTypeError("tar.gz.extract(...).to", values.KindString)
 		}
+		if tl.b == nil || tl.b.RootDir == nil {
+			return values.NewError("tar.gz.extract requires a writable install root")
+		}
 		gr, err := tl.newReader(r)
 		if err != nil {
 			return err
@@ -347,6 +367,140 @@ func (tl tarLayer) Extract(src values.Value) (values.Value, *values.Error) {
 		return extractTar(tar.NewReader(gr), archiveDir, skipBaseDir, ignoreDirs, root)
 	}))
 	return obj.Val(), nil
+}
+
+func (tl tarLayer) Open(src values.Value) (values.Value, *values.Error) {
+	srcObj, ok := src.ToObject()
+	if !ok {
+		return values.Nil, values.NewError("expected readable i/o object as argument to tar.gz.open")
+	}
+	r, ok := srcObj.Binding.(io.Reader)
+	if !ok {
+		return values.Nil, values.NewError("expected readable i/o object as argument to tar.gz.open")
+	}
+
+	gr, err := tl.newReader(r)
+	if err != nil {
+		return values.Nil, values.NewError(err.Error())
+	}
+
+	archive := tarArchive{state: &tarArchiveState{
+		reader: tar.NewReader(gr),
+		files:  make(map[string][]byte),
+	}}
+	return values.Of(values.ObjectFromStruct(archive)), nil
+}
+
+type tarArchive struct {
+	state *tarArchiveState
+}
+
+type tarArchiveState struct {
+	reader *tar.Reader
+	files  map[string][]byte
+	done   bool
+}
+
+func (a tarArchive) File(name values.Value) (values.Value, error) {
+	nameStr, ok := name.ToString()
+	if !ok {
+		return values.Nil, values.FmtTypeError("tar.gz.open(...).file", values.KindString)
+	}
+	if a.state == nil {
+		return values.Nil, values.NewError("tar archive is invalid")
+	}
+
+	fileName := normalizeTarPath(nameStr.String())
+
+	for existingName, contents := range a.state.files {
+		if normalizeTarPath(existingName) == fileName {
+			return values.Of(values.ObjectFromStruct(tarFile{r: bytes.NewReader(contents)})), nil
+		}
+	}
+
+	for !a.state.done {
+		hdr, err := a.state.reader.Next()
+		if errors.Is(err, io.EOF) {
+			a.state.done = true
+			break
+		}
+		if err != nil {
+			return values.Nil, err
+		}
+
+		fileContents, err := io.ReadAll(a.state.reader)
+		if err != nil {
+			return values.Nil, err
+		}
+
+		a.state.files[hdr.Name] = fileContents
+		if normalizeTarPath(hdr.Name) == fileName {
+			return values.Of(values.ObjectFromStruct(tarFile{r: bytes.NewReader(fileContents)})), nil
+		}
+	}
+
+	return values.Nil, values.NewError("file \"" + nameStr.String() + "\" not found in tar archive")
+}
+
+func (a tarArchive) HasFile(name values.Value) (values.Value, error) {
+	nameStr, ok := name.ToString()
+	if !ok {
+		return values.Nil, values.FmtTypeError("tar.gz.open(...).has_file", values.KindString)
+	}
+	if a.state == nil {
+		return values.Nil, values.NewError("tar archive is invalid")
+	}
+
+	fileName := normalizeTarPath(nameStr.String())
+
+	for existingName := range a.state.files {
+		if normalizeTarPath(existingName) == fileName {
+			return values.Of(true), nil
+		}
+	}
+
+	for !a.state.done {
+		hdr, err := a.state.reader.Next()
+		if errors.Is(err, io.EOF) {
+			a.state.done = true
+			break
+		}
+		if err != nil {
+			return values.Nil, err
+		}
+
+		fileContents, err := io.ReadAll(a.state.reader)
+		if err != nil {
+			return values.Nil, err
+		}
+
+		a.state.files[hdr.Name] = fileContents
+		if normalizeTarPath(hdr.Name) == fileName {
+			return values.Of(true), nil
+		}
+	}
+
+	return values.Of(false), nil
+}
+
+type tarFile struct {
+	r *bytes.Reader
+}
+
+func (f tarFile) Text() (values.Value, error) {
+	body, err := io.ReadAll(f.r)
+	if err != nil {
+		return values.Nil, err
+	}
+	return values.Of(string(body)), nil
+}
+
+func (f tarFile) Read(p []byte) (n int, err error) {
+	return f.r.Read(p)
+}
+
+func normalizeTarPath(name string) string {
+	return strings.TrimPrefix(filepath.Clean(name), "./")
 }
 
 type zipBinding struct {

@@ -30,7 +30,7 @@ func fetch(url values.Value) (values.Value, error) {
 	}
 
 	if res.StatusCode >= 300 {
-		return values.Nil, values.NewError("received error status: " + res.Status)
+		return values.Nil, values.NewError("received error status in request to " + urlStr.String() + ": " + res.Status)
 	}
 
 	resp := PendingFetch{req, res}
