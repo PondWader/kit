@@ -1,0 +1,78 @@
+export name = "zig"
+
+index_url = "https://ziglang.org/download/index.json"
+
+fn zig_os() {
+    if sys.OS == "darwin" {
+        return "macos"
+    } else if sys.OS == "linux" {
+        return "linux"
+    } else if sys.OS == "freebsd" {
+        return "freebsd"
+    } else if sys.OS == "netbsd" {
+        return "netbsd"
+    } else if sys.OS == "openbsd" {
+        return "openbsd"
+    }
+
+    throw error("no build available for ${sys.ARCH} ${sys.OS}")
+}
+
+fn zig_arch() {
+    if sys.ARCH == "amd64" {
+        return "x86_64"
+    } else if sys.ARCH == "arm64" {
+        return "aarch64"
+    } else if sys.ARCH == "386" {
+        return "x86"
+    } else if sys.ARCH == "arm" {
+        return "arm"
+    } else if sys.ARCH == "loong64" {
+        return "loongarch64"
+    } else if sys.ARCH == "ppc64" {
+        return "powerpc64"
+    } else if sys.ARCH == "ppc64le" {
+        return "powerpc64le"
+    } else if sys.ARCH == "riscv64" {
+        return "riscv64"
+    } else if sys.ARCH == "s390x" {
+        return "s390x"
+    }
+
+    throw error("no build available for ${sys.ARCH} ${sys.OS}")
+}
+
+fn zig_build_key() -> "${zig_arch()}-${zig_os()}"
+
+export fn install(version) {
+    index = fetch(index_url).text()
+    build = zig_build_key()
+
+    release = index.inclusive_remove_until("\n  \"${version}\": {").split("\n  \"")[0]
+    if release == "" {
+        throw error("version ${version} not found")
+    }
+
+    artifact = release.inclusive_remove_until("\n    \"${build}\": {").split("\n    \"")[0]
+    if artifact == "" {
+        throw error("no build available for ${sys.ARCH} ${sys.OS}")
+    }
+
+    tarball = artifact.inclusive_remove_until("\n      \"tarball\": \"").split("\"")[0]
+    if tarball == "" {
+        throw error("missing tarball for ${build} ${version}")
+    }
+
+    resp = fetch(tarball)
+
+    tar.xz.extract(resp).skipping_base_dir().to("/")
+    link_bin_file("/zig")
+}
+
+export fn versions() {
+    return fetch(index_url)
+        .text()
+        .split("\n  \"")
+        .filter(item -> item != "{")
+        .map(item -> item.split("\"")[0])
+}
