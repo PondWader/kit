@@ -2,6 +2,7 @@ package values
 
 import (
 	"strings"
+	"unicode"
 )
 
 type String string
@@ -71,6 +72,26 @@ func (s String) RemoveSuffix(suffix Value) (Value, *Error) {
 	return Of(strings.TrimSuffix(string(s), suffixStr.String())), nil
 }
 
+func (s String) Contains(substr Value) (Value, *Error) {
+	subStr, ok := substr.ToString()
+	if !ok {
+		return Nil, FmtTypeError("contains", KindString)
+	}
+	return Of(strings.Contains(string(s), subStr.String())), nil
+}
+
+func (s String) IsInteger() Value {
+	if len(s) == 0 {
+		return Of(false)
+	}
+	for _, r := range string(s) {
+		if !unicode.IsDigit(r) {
+			return Of(false)
+		}
+	}
+	return Of(true)
+}
+
 func (s String) Get(key string) Value {
 	switch key {
 	case "trim_whitespace":
@@ -89,6 +110,10 @@ func (s String) Get(key string) Value {
 		return Of(s.RemovePrefix)
 	case "remove_suffix":
 		return Of(s.RemoveSuffix)
+	case "contains":
+		return Of(s.Contains)
+	case "is_integer":
+		return Of(s.IsInteger)
 	default:
 		return Nil
 	}

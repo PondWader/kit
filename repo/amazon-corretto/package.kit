@@ -1,0 +1,59 @@
+export name = "amazon-corretto"
+
+fn corretto_arch() {
+    if sys.ARCH == "amd64" {
+        return "x64"
+    } else if sys.ARCH == "arm64" {
+        return "aarch64"
+    }
+
+    throw error("no build available for ${sys.ARCH} ${sys.OS}")
+}
+
+fn corretto_os() {
+    if sys.OS == "linux" {
+        return "linux"
+    } else if sys.OS == "darwin" {
+        return "macosx"
+    }
+
+    throw error("no build available for ${sys.ARCH} ${sys.OS}")
+}
+
+fn major_version(version) {
+    return version.split(".")[0]
+}
+
+export fn install(version) {
+    os = corretto_os()
+    arch = corretto_arch()
+
+    name = "amazon-corretto-${version}-${os}-${arch}.tar.gz"
+    resp = fetch("https://corretto.aws/downloads/resources/${version}/${name}")
+    tar.gz.extract(resp).skipping_base_dir().to("/")
+
+    link_bin_dir("/bin")
+}
+
+export fn versions() {
+    repos = fetch("https://api.github.com/orgs/corretto/repos?per_page=100")
+        .json()
+        .map(repo -> repo.name)
+        .map(name -> name.remove_prefix("corretto-"))
+        .filter(name -> name.is_integer())
+
+    results = []
+
+    for major in repos {
+        tags = fetch("https://api.github.com/repos/corretto/corretto-${major}/tags?per_page=100")
+            .json()
+            .map(tag -> tag.name)
+            .filter(name -> !name.starts_with("preview-") && name != "ga-release")
+
+        for tag in tags {
+            results.append(tag)
+        }
+    }
+
+    return results
+}

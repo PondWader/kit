@@ -120,6 +120,10 @@ func resolveSliceIndex(v Value, defaultIdx, size int, key string) (int, *Error) 
 	return idx, nil
 }
 
+func (l *List) Append(v Value) {
+	l.s = append(l.s, v)
+}
+
 func (l *List) Get(key string) Value {
 	switch key {
 	case "map":
@@ -130,6 +134,8 @@ func (l *List) Get(key string) Value {
 		return Of(l.Length)
 	case "slice":
 		return Of(l.Slice)
+	case "append":
+		return Of(l.Append)
 	default:
 		return Nil
 	}
