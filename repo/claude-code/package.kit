@@ -1,0 +1,34 @@
+export name = "claude-code"
+
+bucket = "https://storage.googleapis.com/claude-code-dist-86c565f3-f756-42ad-8dfa-d59b1c096819/claude-code-releases"
+
+export fn install(version) {
+    build = ""
+    if sys.OS == "linux" && sys.ARCH == "amd64" {
+        build = "linux-x64"
+    } else if sys.OS == "linux" && sys.ARCH == "arm64" {
+        build = "linux-arm64"
+    } else if sys.OS == "darwin" && sys.ARCH == "amd64" {
+        build = "darwin-x64"
+    } else if sys.OS == "darwin" && sys.ARCH == "arm64" {
+        build = "darwin-arm64"
+    } else {
+        throw error("no build available for ${sys.ARCH} ${sys.OS}")
+    }
+
+    binary = fetch("${bucket}/${version}/${build}/claude")
+    fs.file("/claude").create_with_perms(0o755).write_and_close(binary)
+
+    link_bin_file("/claude")
+}
+
+export fn versions() {
+    latest = fetch("${bucket}/latest").text().trim_whitespace()
+    stable = fetch("${bucket}/stable").text().trim_whitespace()
+
+    if latest == stable {
+        return [latest]
+    }
+
+    return [latest, stable]
+}
